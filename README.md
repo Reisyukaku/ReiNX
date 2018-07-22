@@ -18,7 +18,7 @@ You'll need devkitpro with devkitA64 and run `make`
 
 * Optional custom kernel/secmon/warmboot
 
-* Default kips with exefs redir from `/ReiNX/title/{tid}`
+* Default kips with exefs redir from `/ReiNX/titles/{tid}`
 
 
 **Credits:**
