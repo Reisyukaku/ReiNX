@@ -119,7 +119,7 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2) {
         switch(pk11->kb) {
             case KB_FIRMWARE_VERSION_100_200:
             case KB_FIRMWARE_VERSION_300:
-            case KB_FIRMWARE_VERSION_301: { 
+            case KB_FIRMWARE_VERSION_301: {
                 u8 verPattern[] = {0x40, 0x19, 0x00, 0x36, 0x47, 0xD7, 0xFF, 0x97};
                 u8 hdrSigPattern[] = {0x80, 0x1E, 0x00, 0x36, 0x6B, 0xD7, 0xFF, 0x97};
                 u8 sha2Pattern[] = {0xC0, 0x18, 0x00, 0x36, 0x40, 0xD7, 0xFF, 0x97};
@@ -135,7 +135,7 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2) {
                 u8 verPattern[] = {0x00, 0x01, 0x00, 0x36, 0xFD, 0x7B, 0x41, 0xA9};
                 u8 hdrSigPattern[] = {0x86, 0xFE, 0xFF, 0x97, 0x80, 0x00, 0x00, 0x36};
                 u8 sha2Pattern[] = {0xF2, 0xFB, 0xFF, 0x97, 0xE0, 0x03};
-                
+
                 ver_ptr = (uPtr*)memsearch((void *)pk11->secmon_base, 0x10000, verPattern, sizeof(verPattern));
                 pk21_ptr = (uPtr*)((u32)ver_ptr - 0xC);
                 hdrsig_ptr = (uPtr*)(memsearch((void *)pk11->secmon_base, 0x10000, hdrSigPattern, sizeof(hdrSigPattern)) + 4);
@@ -179,7 +179,7 @@ int keygen(u8 *keyblob, u32 fwVer, void *tsec_fw) {
     se_aes_key_set(0x0B, keyblob + 0x20 + 0x80, 0x10); // Package1 key
     se_aes_key_set(0x0C, keyblob + 0x20, 0x10);
     se_aes_key_set(0x0D, keyblob + 0x20, 0x10);
-    
+
     se_aes_crypt_block_ecb(0x0C, 0, tmp, master_keyseed_retail);
 
     switch (fwVer) {
@@ -206,7 +206,7 @@ int keygen(u8 *keyblob, u32 fwVer, void *tsec_fw) {
         break;
     }
 
-    // Package2 key 
+    // Package2 key
     se_key_acc_ctrl(0x08, 0x15);
     se_aes_unwrap_key(0x08, 0x0C, key8_keyseed);
 }
@@ -218,12 +218,12 @@ u8 loadFirm() {
 
     sdmmc_storage_init_mmc(&storage, &sdmmc, SDMMC_4, SDMMC_BUS_WIDTH_8, 4);
     sdmmc_storage_set_mmc_partition(&storage, 1);
-    
+
     // Read package1.
     print("Reading Package1...\n");
     u8 *package1 = (u8 *)malloc(0x40000);
     sdmmc_storage_read(&storage, 0x100000 / NX_EMMC_BLOCKSIZE, 0x40000 / NX_EMMC_BLOCKSIZE, package1);
-    
+
     // Setup firmware specific data.
     pk11Offs = pkg11_offsentify(package1);
     u8 *keyblob = (u8 *)malloc(NX_EMMC_BLOCKSIZE);
@@ -241,7 +241,7 @@ u8 loadFirm() {
     customSecmon = ret & 2;
     PMC(APBDEV_PMC_SCRATCH1) = pk11Offs->warmboot_base;
     free(package1);
-    
+
     // Read GPT partition.
     LIST_INIT(gpt);
     sdmmc_storage_set_mmc_partition(&storage, 0);
@@ -253,7 +253,7 @@ u8 loadFirm() {
         error("Failed to read GPT!\n");
         return 1;
     }
-    
+
     // Read Package2.
     u8 *tmp = (u8 *)malloc(NX_EMMC_BLOCKSIZE);
     print("Reading Package2 size...\n");
@@ -269,17 +269,17 @@ u8 loadFirm() {
         error("Failed to read Package2!\n");
         return 1;
     }
-    
+
     // Unpack Package2.
     print("Unpacking package2...\n");
     pkg2_hdr_t *dec_pkg2 = unpackFirmwarePackage(pkg2);
     LIST_INIT(kip1_info);
     pkg2_parse_kips(&kip1_info, dec_pkg2);
-    
+
     // Patch firmware.
     print("Patching OS...\n");
     patch(pk11Offs, dec_pkg2);
-    
+
     // Load all KIPs.
     char **sysmods = NULL;
     size_t cnt = enumerateDir(&sysmods, "/ReiNX/sysmodules", "*.kip");
@@ -289,33 +289,37 @@ u8 loadFirm() {
         free(sysmods[i]);
     }
     free(sysmods);
-    
+
     // Build Package2.
-    buildFirmwarePackage(dec_pkg2->data, dec_pkg2->sec_size[PKG2_SEC_KERNEL], &kip1_info);    
+    buildFirmwarePackage(dec_pkg2->data, dec_pkg2->sec_size[PKG2_SEC_KERNEL], &kip1_info);
 }
 
 void launch() {
     u8 pre4x = pk11Offs->kb < KB_FIRMWARE_VERSION_400;
-    
+
     se_aes_key_clear(0x8);
     se_aes_key_clear(0xB);
-    
+
     if (pre4x) {
+        if (pk11Offs->kb == KB_FIRMWARE_VERSION_300)
+            PMC(APBDEV_PMC_SECURE_SCRATCH32) = 0xE3;
+        else if (pk11Offs->kb == KB_FIRMWARE_VERSION_301)
+            PMC(APBDEV_PMC_SECURE_SCRATCH32) = 0x104;
         se_key_acc_ctrl(12, 0xFF);
         se_key_acc_ctrl(13, 0xFF);
     } else {
         se_key_acc_ctrl(12, 0xFF);
         se_key_acc_ctrl(15, 0xFF);
     }
-    
+
     // TODO: Don't Clear 'BootConfig' for retail >1.0.0.
     //memset((void *)0x4003D000, 0, 0x3000);
-    
+
     SE_lock();
-    
+
     // Start boot process now that pk21 is loaded.
     *BOOT_STATE_ADDR = (pre4x ? BOOT_PKG2_LOADED : BOOT_PKG2_LOADED_4X);
-    
+
     // Boot secmon and Wait for it get ready.
     cluster_boot_cpu0(pk11Offs->secmon_base);
     while (!*SECMON_STATE_ADDR)
@@ -324,10 +328,10 @@ void launch() {
     // Disable display.
     if (pre4x)
         display_end();
-    
+
     // Signal to finish boot process.
     *BOOT_STATE_ADDR = (pre4x ? BOOT_DONE : BOOT_DONE_4X);;
-    
+
     // Halt ourselves in waitevent state.
     while (1) FLOW_CTLR(0x4) = 0x50000000;
 }
@@ -338,12 +342,12 @@ void firmware() {
     gfx_clear_color(&gfx_ctxt, 0xFF000000);
     gfx_con_init(&gfx_con, &gfx_ctxt);
     gfx_con_setcol(&gfx_con, ORANGE, 0, 0);
-    
+
     if (!sd_mount()) {
         error("Failed to init SD card!\n");
         return;
     }
-    
+
     print("Welcome to ReiNX %s!\n", VERSION);
     loadFirm();
     drawSplash();
