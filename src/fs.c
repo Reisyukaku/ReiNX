@@ -100,7 +100,7 @@ size_t enumerateDir(char ***output, char *path, char *pattern) {
     strcpy(pathb, path);
     pathb[pathlen] = '/';
 
-    int i; for (i = 0; fno.fname[0] != 0 && fr == FR_OK; i++) {
+    int i; for (i = 0; (fno.fname[0] != 0 && fno.fname[0] != '.') && fr == FR_OK; i++) {
         out = (char **)realloc(out, (i+1) * sizeof(char *));
         out[i] = (char *)malloc(FF_LFN_BUF);
         strcpy(out[i], pathb);
