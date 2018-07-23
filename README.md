@@ -27,6 +27,6 @@ You'll need devkitpro with devkitARM and run `make`
  
  CTCaer and st4rk for their contribution to the hardware code aswell!
  
- SciresM for kernel processes!
+ SciresM for kernel processes! (Modified Source available at https://github.com/Reisyukaku/NX_Sysmodules)
  
  The community for your support!
