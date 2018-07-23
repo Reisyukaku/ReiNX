@@ -18,8 +18,12 @@ You'll need devkitpro with devkitA64 and run `make`
 
 * Optional custom kernel/secmon/warmboot
 
-* Default kips with exefs redir from `/ReiNX/title/{tid}`
+* Exclusive ReiNX sysmodules
 
+**FAQ:**
+
+* Wheres muh 'sig patches'? 
+*Refer to the GBAtemp thread. Cant up them because its illegal*
 
 **Credits:**
  
@@ -27,6 +31,6 @@ You'll need devkitpro with devkitA64 and run `make`
  
  CTCaer and st4rk for their contribution to the hardware code aswell!
  
- SciresM for kernel processes!
+ SciresM for sysmodules!
  
  The community for your support!
