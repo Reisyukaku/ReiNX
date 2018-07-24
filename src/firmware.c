@@ -117,7 +117,16 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2) {
         uPtr *hdrsig_ptr = NULL;
         uPtr *sha2_ptr = NULL;
         switch(pk11->kb) {
-            case KB_FIRMWARE_VERSION_100_200:
+            case KB_FIRMWARE_VERSION_100_200: { // Currently only for 2.0.0
+                u8 verPattern[] = {0x40, 0x19, 0x00, 0x36, 0x2B, 0xD7, 0xFF, 0x97};
+                u8 hdrSigPattern[] = {0x80, 0x1E, 0x00, 0x36, 0x4F, 0xD7, 0xFF, 0x97};
+                u8 sha2Pattern[] = {0xC0, 0x18, 0x00, 0x36, 0x24, 0xD7, 0xFF, 0x97};
+
+                ver_ptr = (uPtr*)memsearch((void *)pk11->secmon_base, 0x10000, verPattern, sizeof(verPattern));
+                hdrsig_ptr = (uPtr*)memsearch((void *)pk11->secmon_base, 0x10000, hdrSigPattern, sizeof(hdrSigPattern));
+                sha2_ptr = (uPtr*)memsearch((void *)pk11->secmon_base, 0x10000, sha2Pattern, sizeof(sha2Pattern));
+                break;
+            }
             case KB_FIRMWARE_VERSION_300:
             case KB_FIRMWARE_VERSION_301: {
                 u8 verPattern[] = {0x40, 0x19, 0x00, 0x36, 0x47, 0xD7, 0xFF, 0x97};
@@ -155,7 +164,9 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2) {
                 break;
             }
         }
-        *pk21_ptr = NOP;
+        if (pk11Offs->kb != KB_FIRMWARE_VERSION_100_200) {
+            *pk21_ptr = NOP;
+        };
         *ver_ptr = NOP;
         *hdrsig_ptr = NOP;
         *sha2_ptr = NOP;
