@@ -136,10 +136,10 @@ struct tegra_pmc_regs {
 	u32 utmip_uhsic_saved_state;
 	u32 utmip_pad_cfg;
 	u32 utmip_term_pad_cfg;
-	u32 utmip_uhsic_sleep_cfg;
-	u32 utmip_uhsic_sleepwalk_cfg;
-	u32 utmip_sleepwalk_p[3];
-	u32 uhsic_sleepwalk_p0;
+	u32 utmip_uhsic_usleep_cfg;
+	u32 utmip_uhsic_usleepwalk_cfg;
+	u32 utmip_usleepwalk_p[3];
+	u32 uhsic_usleepwalk_p0;
 	u32 utmip_uhsic_status;
 	u32 utmip_uhsic_fake;
 	u32 bondout_mirror3[5 - 3];
@@ -167,9 +167,9 @@ struct tegra_pmc_regs {
 	u32 td_pwrgate_inter_part_timer;
 	u32 utmip_uhsic2_triggers;
 	u32 utmip_uhsic2_saved_state;
-	u32 utmip_uhsic2_sleep_cfg;
-	u32 utmip_uhsic2_sleepwalk_cfg;
-	u32 uhsic2_sleepwalk_p1;
+	u32 utmip_uhsic2_usleep_cfg;
+	u32 utmip_uhsic2_usleepwalk_cfg;
+	u32 uhsic2_usleepwalk_p1;
 	u32 utmip_uhsic2_status;
 	u32 utmip_uhsic2_fake;
 	u32 utmip_uhsic2_line_wakeup;

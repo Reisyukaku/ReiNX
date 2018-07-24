@@ -25,8 +25,11 @@ typedef struct _cfg_op_t
 	u32 val;
 } cfg_op_t;
 
-u32 get_tmr();
-void sleep(u32 ticks);
+u32 get_tmr_s();
+u32 get_tmr_ms();
+u32 get_tmr_us();
+void msleep(u32 milliseconds);
+void usleep(u32 microseconds);
 void exec_cfg(u32 *base, const cfg_op_t *ops, u32 num_ops);
 uPtr memsearch(const u8 *startPos, u32 searchSize, const void *pattern, u32 patternSize);
 

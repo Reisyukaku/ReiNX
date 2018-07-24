@@ -22,6 +22,7 @@
 #include "util.h"
 #include "max77620.h"
 #include "sdram_param_t210.h"
+#include "clock.h"
 
 #define CONFIG_SDRAM_COMPRESS_CFG
 
@@ -40,42 +41,42 @@ static u32 _get_sdram_id()
 static void _sdram_config(const sdram_params_t *params)
 {
 	PMC(0x45C) = (((4 * params->emc_pmc_scratch1 >> 2) + 0x80000000) ^ 0xFFFF) & 0xC000FFFF;
-	sleep(params->pmc_io_dpd3_req_wait);
+	usleep(params->pmc_io_dpd3_req_wait);
 
 	u32 req = (4 * params->emc_pmc_scratch2 >> 2) + 0x80000000;
 	PMC(APBDEV_PMC_IO_DPD4_REQ) = (req >> 16 << 16) ^ 0x3FFF0000;
-	sleep(params->pmc_io_dpd4_req_wait);
+	usleep(params->pmc_io_dpd4_req_wait);
 	PMC(APBDEV_PMC_IO_DPD4_REQ) = (req ^ 0xFFFF) & 0xC000FFFF;
-	sleep(params->pmc_io_dpd4_req_wait);
+	usleep(params->pmc_io_dpd4_req_wait);
 	PMC(APBDEV_PMC_WEAK_BIAS) = 0;
-	sleep(1);
+	usleep(1);
 
-	CLOCK(0x98) = params->pllm_setup_control;
-	CLOCK(0x9C) = 0;
-	CLOCK(0x90) = (params->pllm_feedback_divider << 8) | params->pllm_input_divider | 0x40000000 | ((params->pllm_post_divider & 0xFFFF) << 20);
+	CLOCK(CLK_RST_CONTROLLER_PLLM_MISC1) = params->pllm_setup_control;
+	CLOCK(CLK_RST_CONTROLLER_PLLM_MISC2) = 0;
+	CLOCK(CLK_RST_CONTROLLER_PLLM_BASE) = (params->pllm_feedback_divider << 8) | params->pllm_input_divider | 0x40000000 | ((params->pllm_post_divider & 0xFFFF) << 20);
 
-	u32 wait_end = TMR(0x10) + 300;
-	while (!(CLOCK(0x90) & 0x8000000))
+	u32 wait_end = get_tmr_us() + 300;
+	while (!(CLOCK(CLK_RST_CONTROLLER_PLLM_BASE) & 0x8000000))
 	{
-		if (TMR(0x10) >= wait_end)
-			goto break_nosleep;
+		if (get_tmr_us() >= wait_end)
+			goto break_nousleep;
 	}
-	sleep(10);
-break_nosleep:
+	usleep(10);
+break_nousleep:
 
-	CLOCK(0x19C) = ((params->mc_emem_arb_misc0 >> 11) & 0x10000) | (params->emc_clock_source & 0xFFFEFFFF);
+	CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_EMC) = ((params->mc_emem_arb_misc0 >> 11) & 0x10000) | (params->emc_clock_source & 0xFFFEFFFF);
 	if (params->emc_clock_source_dll)
-		CLOCK(0x664) = params->emc_clock_source_dll;
+		CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_EMC_DLL) = params->emc_clock_source_dll;
 	if (params->clear_clock2_mc1)
-		CLOCK(0x44C) = 0x40000000;
-	CLOCK(0x328) = 0x2000001;
-	CLOCK(0x284) = 0x4000;
-	CLOCK(0x30C) = 0x2000001;
+		CLOCK(CLK_RST_CONTROLLER_CLK_ENB_W_CLR) = 0x40000000;
+	CLOCK(CLK_RST_CONTROLLER_CLK_ENB_H_SET) = 0x2000001;
+	CLOCK(CLK_RST_CONTROLLER_CLK_ENB_X_SET) = 0x4000;
+	CLOCK(CLK_RST_CONTROLLER_RST_DEV_H_CLR) = 0x2000001;
 	EMC(EMC_PMACRO_VTTGEN_CTRL_0) = params->emc_pmacro_vttgen_ctrl0;
 	EMC(EMC_PMACRO_VTTGEN_CTRL_1) = params->emc_pmacro_vttgen_ctrl1;
 	EMC(EMC_PMACRO_VTTGEN_CTRL_2) = params->emc_pmacro_vttgen_ctrl2;
 	EMC(EMC_TIMING_CONTROL) = 1;
-	sleep(1);
+	usleep(1);
 	EMC(EMC_DBG) = (params->emc_dbg_write_mux << 1) | params->emc_dbg;
 	if (params->emc_bct_spare2)
 		*(vu32 *)params->emc_bct_spare2 = params->emc_bct_spare3;
@@ -296,7 +297,7 @@ break_nosleep:
 	EMC(EMC_AUTO_CAL_VREF_SEL_1) = params->emc_auto_cal_vref_sel1;
 	EMC(EMC_AUTO_CAL_INTERVAL) = params->emc_auto_cal_interval;
 	EMC(EMC_AUTO_CAL_CONFIG) = params->emc_auto_cal_config;
-	sleep(params->emc_auto_cal_wait);
+	usleep(params->emc_auto_cal_wait);
 	if (params->emc_bct_spare8)
 		*(vu32 *)params->emc_bct_spare8 = params->emc_bct_spare9;
 	EMC(EMC_CFG_2) = params->emc_cfg2;
@@ -392,7 +393,7 @@ break_nosleep:
 		MC(MC_TIMING_CONTROL) = 1;
 	}
 	PMC(0x45C) = ((4 * params->emc_pmc_scratch1 >> 2) + 0x40000000) & 0xCFFF0000;
-	sleep(params->pmc_io_dpd3_req_wait);
+	usleep(params->pmc_io_dpd3_req_wait);
 	if (!params->emc_auto_cal_interval)
 		EMC(EMC_AUTO_CAL_CONFIG) = params->emc_auto_cal_config | 0x200;
 	EMC(EMC_PMACRO_BRICK_CTRL_RFU2) = params->emc_pmacro_brick_ctrl_rfu2;
@@ -407,29 +408,29 @@ break_nosleep:
 		}
 	}
 	EMC(EMC_TIMING_CONTROL) = 1;
-	sleep(params->emc_timing_control_wait);
+	usleep(params->emc_timing_control_wait);
 	PMC(0x4E4) &= 0xFFF8007F;
-	sleep(params->pmc_ddr_ctrl_wait);
+	usleep(params->pmc_ddr_ctrl_wait);
 	if (params->memory_type == 2)
 	{
 		EMC(EMC_PIN) = (params->emc_pin_gpio_enable << 16) | (params->emc_pin_gpio << 12);
-		sleep(params->emc_pin_extra_wait + 200);
+		usleep(params->emc_pin_extra_wait + 200);
 		EMC(EMC_PIN) = ((params->emc_pin_gpio_enable << 16) | (params->emc_pin_gpio << 12)) + 256;
-		sleep(params->emc_pin_extra_wait + 500);
+		usleep(params->emc_pin_extra_wait + 500);
 	}
 	if (params->memory_type == 3)
 	{
 		EMC(EMC_PIN) = (params->emc_pin_gpio_enable << 16) | (params->emc_pin_gpio << 12);
-		sleep(params->emc_pin_extra_wait + 200);
+		usleep(params->emc_pin_extra_wait + 200);
 		EMC(EMC_PIN) = ((params->emc_pin_gpio_enable << 16) | (params->emc_pin_gpio << 12)) + 256;
-		sleep(params->emc_pin_extra_wait + 2000);
+		usleep(params->emc_pin_extra_wait + 2000);
 	}
 	EMC(EMC_PIN) = ((params->emc_pin_gpio_enable << 16) | (params->emc_pin_gpio << 12)) + 0x101;
-	sleep(params->emc_pin_program_wait);
+	usleep(params->emc_pin_program_wait);
 	if (params->memory_type != 3)
 		EMC(EMC_NOP) = (params->emc_dev_select << 30) + 1;
 	if (params->memory_type == 1)
-		sleep(params->emc_pin_extra_wait + 200);
+		usleep(params->emc_pin_extra_wait + 200);
 	if (params->memory_type == 3)
 	{
 		if (params->emc_bct_spare10)
@@ -447,12 +448,12 @@ break_nosleep:
 		if (params->emc_zcal_warm_cold_boot_enables & 1)
 		{
 			EMC(EMC_ZQ_CAL) = params->emc_zcal_init_dev0;
-			sleep(params->emc_zcal_init_wait);
+			usleep(params->emc_zcal_init_wait);
 			EMC(EMC_ZQ_CAL) = params->emc_zcal_init_dev0 ^ 3;
 			if (!(params->emc_dev_select & 2))
 			{
 				EMC(EMC_ZQ_CAL) = params->emc_zcal_init_dev1;
-				sleep(params->emc_zcal_init_wait);
+				usleep(params->emc_zcal_init_wait);
 				EMC(EMC_ZQ_CAL) = params->emc_zcal_init_dev1 ^ 3;
 			}
 		}
@@ -509,7 +510,7 @@ void sdram_init()
 	i2c_send_byte(I2C_5, 0x3C, MAX77620_REG_SD1, 40); //40 = (1000 * 1100 - 600000) / 12500 -> 1.1V
 
 	PMC(APBDEV_PMC_VDDP_SEL) = params->pmc_vddp_sel;
-	sleep(params->pmc_vddp_sel_wait);
+	usleep(params->pmc_vddp_sel_wait);
 	PMC(APBDEV_PMC_DDR_PWR) = PMC(APBDEV_PMC_DDR_PWR);
 	PMC(APBDEV_PMC_NO_IOPOWER) = params->pmc_no_io_power;
 	PMC(APBDEV_PMC_REG_SHORT) = params->pmc_reg_short;

@@ -33,7 +33,7 @@ static void _display_dsi_wait(u32 timeout, u32 off, u32 mask)
 	u32 end = TMR(0x10) + timeout;
 	while (TMR(0x10) < end && DSI(off) & mask)
 		;
-	sleep(5);
+	usleep(5);
 }
 
 void display_init()
@@ -67,11 +67,11 @@ void display_init()
 	GPIO_3(0x10) = GPIO_3(0x10) & 0xFFFFFFFC | 0x3;
 	GPIO_3(0x20) = GPIO_3(0x20) & 0xFFFFFFFE | 0x1;
 
-	sleep(10000u);
+	usleep(10000u);
 
 	GPIO_3(0x20) = GPIO_3(0x20) & 0xFFFFFFFD | 0x2;
 
-	sleep(10000);
+	usleep(10000);
 
 	GPIO_6(0x04) = GPIO_6(0x04) & 0xFFFFFFF8 | 0x7;
 	GPIO_6(0x14) = GPIO_6(0x14) & 0xFFFFFFF8 | 0x7;
@@ -84,11 +84,11 @@ void display_init()
 	exec_cfg((u32 *)DISPLAY_A_BASE, _display_config_2, 94);
 	exec_cfg((u32 *)DSI_BASE, _display_config_3, 60);
 
-	sleep(10000);
+	usleep(10000);
 
 	GPIO_6(0x24) = GPIO_6(0x24) & 0xFFFFFFFB | 0x4;
 
-	sleep(60000);
+	usleep(60000);
 
 	DSI(_DSIREG(DSI_DSI_BTA_TIMING)) = 0x50204;
 	DSI(_DSIREG(DSI_DSI_WR_DATA)) = 0x337;
@@ -102,7 +102,7 @@ void display_init()
 	DSI(_DSIREG(DSI_HOST_DSI_CONTROL)) = 0x200B;
 	_display_dsi_wait(150000, _DSIREG(DSI_HOST_DSI_CONTROL), 8);
 
-	sleep(5000);
+	usleep(5000);
 
 	_display_ver = DSI(_DSIREG(DSI_DSI_RD_DATA));
 	if (_display_ver == 0x10)
@@ -111,25 +111,25 @@ void display_init()
 	DSI(_DSIREG(DSI_DSI_WR_DATA)) = 0x1105;
 	DSI(_DSIREG(DSI_DSI_TRIGGER)) = 0x2;
 
-	sleep(180000);
+	usleep(180000);
 
 	DSI(_DSIREG(DSI_DSI_WR_DATA)) = 0x2905;
 	DSI(_DSIREG(DSI_DSI_TRIGGER)) = 0x2;
 
-	sleep(20000);
+	usleep(20000);
 
 	exec_cfg((u32 *)DSI_BASE, _display_config_5, 21);
 	exec_cfg((u32 *)CLOCK_BASE, _display_config_6, 3);
 	DISPLAY_A(_DIREG(DC_DISP_DISP_CLOCK_CONTROL)) = 4;
 	exec_cfg((u32 *)DSI_BASE, _display_config_7, 10);
 
-	sleep(10000);
+	usleep(10000);
 
 	exec_cfg((u32 *)MIPI_CAL_BASE, _display_config_8, 6);
 	exec_cfg((u32 *)DSI_BASE, _display_config_9, 4);
 	exec_cfg((u32 *)MIPI_CAL_BASE, _display_config_10, 16);
 
-	sleep(10000);
+	usleep(10000);
 
 	exec_cfg((u32 *)DISPLAY_A_BASE, _display_config_11, 113);
 }
@@ -155,7 +155,7 @@ void display_color_screen(u32 color)
 	DISPLAY_A(_DIREG(DC_DISP_BLEND_BACKGROUND_COLOR)) = color;
 	DISPLAY_A(_DIREG(DC_CMD_STATE_CONTROL)) = DISPLAY_A(_DIREG(DC_CMD_STATE_CONTROL)) & 0xFFFFFFFE | 1;
 
-	sleep(35000);
+	usleep(35000);
 
 	GPIO_6(0x24) = GPIO_6(0x24) & 0xFFFFFFFE | 1;
 }
@@ -165,7 +165,7 @@ u32 *display_init_framebuffer()
 	//This configures the framebuffer @ 0xC0000000 with a resolution of 1280x720 (line stride 768).
 	exec_cfg((u32 *)DISPLAY_A_BASE, cfg_display_framebuffer, 32);
 
-	sleep(35000);
+	usleep(35000);
 
 	GPIO_6(0x24) = GPIO_6(0x24) & 0xFFFFFFFE | 1;
 

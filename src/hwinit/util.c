@@ -18,15 +18,34 @@
 #include "util.h"
 #include "t210.h"
 
-u32 get_tmr()
+u32 get_tmr_s()
 {
-	return TMR(0x10);
+	return RTC(0x8); //RTC_SECONDS
 }
 
-void sleep(u32 ticks)
+u32 get_tmr_ms()
+{
+	// The registers must be read with the following order:
+	// -> RTC_MILLI_SECONDS (0x10) -> RTC_SHADOW_SECONDS (0xC)
+	return (RTC(0x10) | (RTC(0xC)<< 10));
+}
+
+u32 get_tmr_us()
+{
+	return TMR(0x10); //TIMERUS_CNTR_1US
+}
+
+void musleep(u32 milliseconds)
+{
+	u32 start = RTC(0x10) | (RTC(0xC)<< 10);
+	while (((RTC(0x10) | (RTC(0xC)<< 10)) - start) <= milliseconds)
+		;
+}
+
+void usleep(u32 microseconds)
 {
 	u32 start = TMR(0x10);
-	while (TMR(0x10) - start <= ticks)
+	while ((TMR(0x10) - start) <= microseconds)
 		;
 }
 

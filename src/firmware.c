@@ -60,7 +60,7 @@ void drawSplash() {
         fread((void*)0xC0000000, fsize(), 1);
         fclose();
     }
-    sleep(3000000);
+    usleep(3000000);
 }
 
 pk11_offs *pkg11_offsentify(u8 *pkg1) {
@@ -335,7 +335,7 @@ void launch() {
     // Boot secmon and Wait for it get ready.
     cluster_boot_cpu0(pk11Offs->secmon_base);
     while (!*SECMON_STATE_ADDR)
-        sleep(1);
+        usleep(1);
 
     // Disable display.
     if (pre4x)

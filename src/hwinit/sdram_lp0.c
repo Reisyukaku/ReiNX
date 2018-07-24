@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  * Copyright 2014 Google Inc.
+ * Copyright (C) 2018 naehrwert
+ * Copyright (C) 2018 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -44,8 +46,9 @@ void sdram_lp0_save_params(const void *params)
 /* 32 bits version c macro */
 #define c32(value, pmcreg) pmc->pmcreg = value
 
-	//TODO: pkg1.1 reads them from MC.
-	sdram->McGeneralizedCarveout1Bom = 0;
+	//TODO: pkg1.1 (1.X - 3.X) reads them from MC.
+	//Patch carveout parameters.
+	/*sdram->McGeneralizedCarveout1Bom = 0;
 	sdram->McGeneralizedCarveout1BomHi = 0;
 	sdram->McGeneralizedCarveout1Size128kb = 0;
 	sdram->McGeneralizedCarveout1Access0 = 0;
@@ -114,7 +117,28 @@ void sdram_lp0_save_params(const void *params)
 	sdram->McGeneralizedCarveout5ForceInternalAccess2 = 0;
 	sdram->McGeneralizedCarveout5ForceInternalAccess3 = 0;
 	sdram->McGeneralizedCarveout5ForceInternalAccess4 = 0;
-	sdram->McGeneralizedCarveout5Cfg0 = 0x8F;
+	sdram->McGeneralizedCarveout5Cfg0 = 0x8F;*/
+
+	//TODO: this is 4.X+ behaviour which seems to work fine for < 4.X.
+	//Patch carveout parameters.
+	sdram->McGeneralizedCarveout1Cfg0 = 0;
+	sdram->McGeneralizedCarveout2Cfg0 = 0;
+	sdram->McGeneralizedCarveout3Cfg0 = 0;
+	sdram->McGeneralizedCarveout4Cfg0 = 0;
+	sdram->McGeneralizedCarveout5Cfg0 = 0;
+
+	//Patch SDRAM parameters.
+	u32 t0 = sdram->EmcSwizzleRank0Byte0 << 5 >> 29 > sdram->EmcSwizzleRank0Byte0 << 1 >> 29;
+	u32 t1 = (t0 & 0xFFFFFFEF) | ((sdram->EmcSwizzleRank1Byte0 << 5 >> 29 > sdram->EmcSwizzleRank1Byte0 << 1 >> 29) << 4);
+	u32 t2 = (t1 & 0xFFFFFFFD) | ((sdram->EmcSwizzleRank0Byte1 << 5 >> 29 > sdram->EmcSwizzleRank0Byte1 << 1 >> 29) << 1);
+	u32 t3 = (t2 & 0xFFFFFFDF) | ((sdram->EmcSwizzleRank1Byte1 << 5 >> 29 > sdram->EmcSwizzleRank1Byte1 << 1 >> 29) << 5);
+	u32 t4 = (t3 & 0xFFFFFFFB) | ((sdram->EmcSwizzleRank0Byte2 << 5 >> 29 > sdram->EmcSwizzleRank0Byte2 << 1 >> 29) << 2);
+	u32 t5 = (t4 & 0xFFFFFFBF) | ((sdram->EmcSwizzleRank1Byte2 << 5 >> 29 > sdram->EmcSwizzleRank1Byte2 << 1 >> 29) << 6);
+	u32 t6 = (t5 & 0xFFFFFFF7) | ((sdram->EmcSwizzleRank0Byte3 << 5 >> 29 > sdram->EmcSwizzleRank0Byte3 << 1 >> 29) << 3);
+	u32 t7 = (t6 & 0xFFFFFF7F) | ((sdram->EmcSwizzleRank1Byte3 << 5 >> 29 > sdram->EmcSwizzleRank1Byte3 << 1 >> 29) << 7);
+	sdram->SwizzleRankByteEncode = t7;
+	sdram->EmcBctSpare2 = 0x40000DD8;
+	sdram->EmcBctSpare3 = t7;
 
 	s(EmcClockSource, 7:0, scratch6, 15:8);
 	s(EmcClockSourceDll, 7:0, scratch6, 23:16);
@@ -786,9 +810,8 @@ void sdram_lp0_save_params(const void *params)
 	s32(EmcBctSpare6, scratch40);
 	s32(EmcBctSpare5, scratch42);
 	s32(EmcBctSpare4, scratch44);
-	s32(SwizzleRankByteEncode, scratch45);
-	//s32(EmcBctSpare2, scratch46);
-	pmc->scratch46 = 0x40000DD8;
+	s32(EmcBctSpare3, scratch45);
+	s32(EmcBctSpare2, scratch46);
 	s32(EmcBctSpare1, scratch47);
 	s32(EmcBctSpare0, scratch48);
 	s32(EmcBctSpare9, scratch50);

@@ -40,13 +40,13 @@ u32 sd_mount() {
     return 0;
 }
 
-u32 fopen(const char *path, const char *mode) {
+u32 *fopen(const char *path, const char *mode) {
     if (f_open(&fp, path, mode[0] == 'w' ? FA_WRITE : FA_READ) != FR_OK) 
         return NULL;
     return 1;
 }
 
-u32 fread(void *buf, size_t size, size_t ntimes) {
+u32 *fread(void *buf, size_t size, size_t ntimes) {
     u8 *ptr = buf;
     while (size > 0) {
         u32 rsize = MIN(ntimes * size, size);
@@ -61,7 +61,7 @@ u32 fread(void *buf, size_t size, size_t ntimes) {
     return 1;
 }
 
-u32 fwrite(void *buf, size_t size, size_t ntimes) {
+u32 *fwrite(void *buf, size_t size, size_t ntimes) {
     u8 *ptr = buf;
     while (size > 0) {
         u32 rsize = MIN(ntimes * size, size);
