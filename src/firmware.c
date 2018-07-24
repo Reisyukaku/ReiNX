@@ -67,7 +67,7 @@ void drawSplash() {
 pk11_offs *pkg11_offsentify(u8 *pkg1) {
     for (u32 i = 0; _pk11_offs[i].id; i++)
         if (!memcmp(pkg1 + 0x10, _pk11_offs[i].id, 12))
-            return &_pk11_offs[i];
+            return (pk11_offs *)&_pk11_offs[i];
     return NULL;
 }
 

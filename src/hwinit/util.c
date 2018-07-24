@@ -57,7 +57,7 @@ void exec_cfg(u32 *base, const cfg_op_t *ops, u32 num_ops)
 
 uPtr memsearch(const u8 *startPos, u32 searchSize, const void *pattern, u32 patternSize) {
     if(!searchSize) return 0;
-    for (void *pos = startPos; pos <= startPos + searchSize - patternSize; pos++) {
+    for (u8 *pos = (u8 *)startPos; pos <= startPos + searchSize - patternSize; pos++) {
         if (memcmp(pos, pattern, patternSize) == 0) return (uPtr)pos;
     }
     return 0;
