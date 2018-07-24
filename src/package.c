@@ -59,7 +59,7 @@ u8 pkg1_unpack(pk11_offs *offs, u8 *pkg1) {
     for (u32 i = 0; i < 3; i++) {
         if (offs->sec_map[i] == 0 && offs->warmboot_base) {
             u8 *extWb = NULL;
-            if(fopen("/ReiNX/warmboot.bin", "rb") != NULL) {
+            if(fopen("/ReiNX/warmboot.bin", "rb") != 0) {
                 extWb = malloc(fsize());
                 fread(extWb, fsize(), 1);
                 fclose();
@@ -67,7 +67,7 @@ u8 pkg1_unpack(pk11_offs *offs, u8 *pkg1) {
             memcpy((void *)offs->warmboot_base, extWb == NULL ? pdata : extWb, sec_size[offs->sec_map[i]]);
         } else if (offs->sec_map[i] == 2 && offs->secmon_base) {
             u8 *extSec = NULL;
-            if(fopen("/ReiNX/secmon.bin", "rb") != NULL) {
+            if(fopen("/ReiNX/secmon.bin", "rb") != 0) {
                 extSec = malloc(fsize());
                 fread(extSec, fsize(), 1);
                 fclose();
@@ -104,7 +104,7 @@ void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info) {
 
     // Kernel.
     u8 *extKern = NULL;
-    if(fopen("/ReiNX/kernel.bin", "rb") != NULL) {
+    if(fopen("/ReiNX/kernel.bin", "rb") != 0) {
         extKern = malloc(fsize());
         fread(extKern, fsize(), 1);
         fclose();
