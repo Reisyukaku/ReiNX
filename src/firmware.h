@@ -13,5 +13,6 @@
 
 //Instructions
 #define NOP 0xD503201F
+#define ADRP(r, o) 0x90000000 | ((((o) >> 12) & 0x3) << 29) | ((((o) >> 12) & 0x1FFFFC) << 3) | ((r) & 0x1F)
 
 void firmware();
