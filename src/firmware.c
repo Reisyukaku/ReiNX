@@ -57,7 +57,7 @@ static void SE_lock() {
 
 void drawSplash() {
     // Draw splashscreen to framebuffer.
-    if(fopen("/ReiNX/splash.bin", "rb") != NULL) {
+    if(fopen("/ReiNX/splash.bin", "rb") != 0) {
         fread((void*)0xC0000000, fsize(), 1);
         fclose();
     }
@@ -67,7 +67,7 @@ void drawSplash() {
 pk11_offs *pkg11_offsentify(u8 *pkg1) {
     for (u32 i = 0; _pk11_offs[i].id; i++)
         if (!memcmp(pkg1 + 0x10, _pk11_offs[i].id, 12))
-            return &_pk11_offs[i];
+            return (pk11_offs *)&_pk11_offs[i];
     return NULL;
 }
 
@@ -94,7 +94,7 @@ void pkg2_parse_kips(link_t *info, pkg2_hdr_t *pkg2) {
 }
 
 void loadKip(link_t *info, char *path) {
-    if(fopen(path, "rb") == NULL) return;
+    if(fopen(path, "rb") == 0) return;
     pkg2_kip1_t *ckip = malloc(fsize());
     fread(ckip, fsize(), 1);
     fclose();

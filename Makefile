@@ -16,7 +16,7 @@ dir_build := build
 dir_out := out
 
 ARCH := -march=armv4t -mtune=arm7tdmi -mthumb -mthumb-interwork
-CFLAGS = $(ARCH) -Os -nostdlib -ffunction-sections -fdata-sections -fomit-frame-pointer -fno-inline -std=gnu11# -Wall
+CFLAGS = $(ARCH) -Os -nostdlib -ffunction-sections -fdata-sections -fomit-frame-pointer -fno-inline -fno-builtin -std=gnu11# -Wall
 LDFLAGS = $(ARCH) -nostartfiles -lgcc -Wl,--nmagic,--gc-sections
 
 objects =	$(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
@@ -32,6 +32,7 @@ all: $(dir_out)/$(name).bin
 
 .PHONY: clean
 clean:
+	@echo "clean ..."
 	@rm -rf $(dir_build)
 	@rm -rf $(dir_out)
 
