@@ -46,7 +46,7 @@ pkg2_hdr_t *unpackFirmwarePackage(u8 *data) {
     return hdr;
 }
 
-u8 pkg1_unpack(pk11_offs *offs, u8 *pkg1) {
+void pkg1_unpack(pk11_offs *offs, u8 *pkg1) {
     u8 ret = 0;
     u8 *extWb;
     u8 *extSec;
@@ -78,13 +78,12 @@ u8 pkg1_unpack(pk11_offs *offs, u8 *pkg1) {
     }
     if(extWb != NULL) {
         free(extWb); 
-        ret |= 1;
+        customWarmboot = 1;
     }
     if(extSec != NULL) {
         free(extSec); 
-        ret |= 2;
+        customSecmon = 1;
     }
-	return ret;
 }
 
 void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info) {
@@ -109,6 +108,7 @@ void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info) {
         fread(extKern, fsize(), 1);
         fclose();
     }
+    if(extKern != NULL) customKern = 1;
     memcpy(pdst, extKern == NULL ? kernel : extKern, kernel_size);
     hdr->sec_size[PKG2_SEC_KERNEL] = kernel_size;
     hdr->sec_off[PKG2_SEC_KERNEL] = 0x10000000;

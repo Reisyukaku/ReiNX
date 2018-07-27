@@ -27,8 +27,6 @@
 #define VERSION "v0.1"
 
 static pk11_offs *pk11Offs = NULL;
-static u8 customSecmon = 0;
-static u8 customWarmboot = 0;
 
 // TODO: Maybe find these with memsearch
 static const pk11_offs _pk11_offs[] = {
@@ -111,7 +109,8 @@ void loadKip(link_t *info, char *path) {
     list_append(info, &ki->link);
 }
 
-void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2) {
+void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
+    //Secmon patches
     if(!customSecmon){
         uPtr *rlc_ptr = NULL;
         uPtr *ver_ptr = NULL;
@@ -176,6 +175,14 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2) {
         *ver_ptr = NOP;
         *hdrsig_ptr = NOP;
         *sha2_ptr = NOP;
+    }
+    if(!customKern) {
+        //TODO
+    }
+    LIST_FOREACH_ENTRY(pkg2_kip1_info_t, ki, kips, link) {
+        if(ki->kip1->tid == 0x0100000000000001) {
+            //TODO
+        }
     }
 }
 
@@ -265,9 +272,7 @@ u8 loadFirm() {
     u8 *pkg11 = package1 + pk11Offs->pkg11_off;
     u32 pkg11_size = *(u32 *)pkg11;
     se_aes_crypt_ctr(11, pkg11 + 0x20, pkg11_size, pkg11 + 0x20, pkg11_size, pkg11 + 0x10);
-    ret = pkg1_unpack(pk11Offs, package1);
-    customWarmboot = ret & 1;
-    customSecmon = ret & 2;
+    pkg1_unpack(pk11Offs, package1);
     PMC(APBDEV_PMC_SCRATCH1) = pk11Offs->warmboot_base;
     free(package1);
 
@@ -307,7 +312,7 @@ u8 loadFirm() {
 
     // Patch firmware.
     print("Patching OS...\n");
-    patch(pk11Offs, dec_pkg2);
+    patch(pk11Offs, dec_pkg2, &kip1_info);
 
     // Load all KIPs.
     char **sysmods = NULL;
