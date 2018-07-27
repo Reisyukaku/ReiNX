@@ -65,13 +65,11 @@ uPtr memsearch(const u8 *startPos, u32 searchSize, const void *pattern, u32 patt
     return 0;
 }
 
-
 typedef struct lsf_head {
 	u32 loc;
 	u32 size;
 	u32 filesize;
 } lsf_head;
-
 
 char * blz_decompress(unsigned char * compressed, u32 * isize) {
 	u32 size = *isize;
