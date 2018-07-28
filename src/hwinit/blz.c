@@ -91,6 +91,128 @@ void slide(compress_info * info, const u8 * psrc, int size) {
 		slidebyte(info, psrc--);
 }
 
+int result = 0;
+char * blz_compress(unsigned char * decompressed, u32 * isize) {
+	result = 1;
+	u8 * dest = malloc(*isize+1);
+	u32 classic_size = *isize;
+
+	u32 comp_size = *isize;
+	
+	if(*isize > sizeof(compfooter) && comp_size >= *isize) {
+		
+		u32 bufsize = (4098 + 4098 + 256 + 256) * sizeof(s16);
+		u8 workbuf[bufsize];
+		
+		u32 headerSize = 4;
+		do {
+			compress_info info;
+			init_info(&info, workbuf);
+			const int maxsize = 0xF + 3;
+			const u8 * psrc = decompressed + *isize;
+			u8 * pdst = dest + *isize;
+			while(psrc - decompressed > 0 && pdst - dest > 0) {
+				u8 * pflag = --pdst;
+				*pflag = 0;
+				for(int i=0; i<8; i++) {
+					int noff = 0;
+					u32 t1 = MIN(maxsize, psrc - decompressed);
+					t1 = MIN(t1, decompressed + *isize - psrc);
+					int nsize = search(&info, psrc, &noff, t1);
+					if(nsize <3) {
+						if(pdst - dest < 1){
+							result = -1;
+							break;
+						}
+						slide(&info, psrc, 1);
+						*--pdst = *--psrc;
+					}
+					else {
+						if(pdst - dest < 2) {
+							result = -2;
+							break;
+						}
+						*pflag |= 0x80 >> i;
+						slide(&info, psrc, nsize);
+						psrc -= nsize;
+						nsize -= 3;
+						*--pdst = (nsize << 4 & 0xF0) | ((noff -3) >> 8 & 0x0F);
+						*--pdst = (noff - 3) & 0xFF;
+					}
+					if(psrc - decompressed <= 0)
+						break;
+				}
+				if(!result)
+					break;
+				
+			}
+			if(!result)
+				break;
+			comp_size = dest + *isize - pdst;
+		} while(0);
+	}
+	else
+		result = -3;
+	if(result>0) {
+		u32 origsize = *isize;
+		u8 *compbuffer = dest + origsize - comp_size;
+		u32 compbuffersize = comp_size;
+		u32 origsafe = 0;
+		u32 compresssafe = 0;
+		int over =0;
+		while(origsize > 0) {
+			u8 flag = compbuffer[--compbuffersize];
+			for(int i=0; i<8; i++) {
+				if((flag << i & 0x80)==0) {
+					compbuffersize--;
+					origsize--;
+				}
+				else {
+					int nsize = (compbuffer[--compbuffersize] >> 4 & 0x0F) + 3;
+					compbuffersize--;
+					origsize -= nsize;
+					if(origsize < compbuffersize) {
+						origsafe = origsize;
+						compresssafe = compbuffersize;
+						over = 1;
+						break;
+					}
+					
+				}
+				if(origsize <=0)
+					break;
+			}
+			if(over)
+				break;
+
+		}
+		u32 fcompsize = comp_size - compresssafe;
+		u32 padoffset = origsafe + fcompsize;
+		u32 compfooteroff = (u32) Align(padoffset, 4);
+		comp_size = compfooteroff + sizeof(compfooter);
+		u32 top = comp_size - origsafe;
+		u32 bottom = comp_size - padoffset;
+		if(comp_size >= classic_size || top > 0xFFFFFF){
+			result = 0;
+		}
+		else {
+			memcpy(dest, decompressed, origsafe);
+			memmove(dest + origsafe, compbuffer + compresssafe, fcompsize);
+			memset(dest + padoffset, 0xFF, compfooteroff - padoffset);
+			compfooter * fcompfooter = (compfooter *) (dest + compfooteroff);
+			fcompfooter->compressed_size = top;
+			fcompfooter->init_index = comp_size - padoffset;
+			fcompfooter->uncompressed_addl_size = classic_size - comp_size;
+		}
+		*isize = comp_size;
+		return dest;
+		
+	}
+	
+	
+
+}
+
 char * blz_decompress(unsigned char * compressed, u32 * isize) {
 	u32 size = *isize;
 	u32 compressed_size;
