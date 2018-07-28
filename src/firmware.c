@@ -23,6 +23,7 @@
 #include "package.h"
 #include "error.h"
 #include "firmware.h"
+#include "kip.h"
 
 #define VERSION "v0.1"
 
