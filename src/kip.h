@@ -3,7 +3,7 @@
 
 #include "hwinit/list.h"
 #include "hwinit/sha256.h"
-#include "hwinit/util.h"
+#include "hwinit/blz.h"
 
 typedef struct kip_patch
 {
@@ -51,7 +51,7 @@ static kip_id kip_id_list[] =
 
 int patch_apply(pkg2_kip1_info_t * ki, kip_patchlist plist[]) {
 	u32 oldsize = ki->size;
-	char * decomp = kipread(ki->kip1->data, &ki->size);
+	char * decomp = kip_decomp(ki->kip1->data, &ki->size);
 	int i=0;
 	while(plist[i].name!=NULL){
 		int j=0;
