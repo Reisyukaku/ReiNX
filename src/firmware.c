@@ -70,7 +70,7 @@ pk11_offs *pkg11_offsentify(u8 *pkg1) {
 }
 
 void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
-    //Secmon patches
+    //Patch Secmon
     if(!customSecmon){
         uPtr *rlc_ptr = NULL;
         uPtr *ver_ptr = NULL;
@@ -136,14 +136,52 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
         *hdrsig_ptr = NOP;
         *sha2_ptr = NOP;
     }
+    
+    //Patch Kernel
     if(!customKern) {
         //TODO
     }
+    
+    //Patch FS module (truly not my proudest code TODO cleanup)
     LIST_FOREACH_ENTRY(pkg2_kip1_info_t, ki, kips, link) {        
         //Patch FS
         if(ki->kip1->tid == 0x0100000000000000) {
             print("Patching FS\n");
-            //TODO
+            
+            //Create header
+            size_t sizeDiff = ki->kip1->sections[0].size_decomp - ki->kip1->sections[0].size_comp;
+            size_t newSize = ki->size + sizeDiff;
+            pkg2_kip1_t *moddedKip = malloc(newSize);
+            memcpy(moddedKip, ki->kip1, newSize);
+            u32 pos = 0;
+            for(int i = 0; i < KIP1_NUM_SECTIONS; i++) {
+                if(!i) {
+                    //Get decomp .text segment
+                    u8 *kipDecompText = blz_decompress(moddedKip->data, moddedKip->sections[i].size_comp);
+                    
+                    /*
+                    *    PATCHES HERE
+                    */
+                    
+                    moddedKip->flags = 0x3E;
+                    memcpy((void*)moddedKip->data, kipDecompText, moddedKip->sections[i].size_decomp);
+                    free(kipDecompText);
+                    pos += moddedKip->sections[i].size_comp;
+                    moddedKip->sections[i].size_comp = moddedKip->sections[i].size_decomp;
+                } else {
+                    if(moddedKip->sections[i].offset == 0) continue;
+                    memcpy((void*)moddedKip->data + pos + sizeDiff, (void*)ki->kip1->data + pos, moddedKip->sections[i].size_comp);
+                    pos += moddedKip->sections[i].size_comp;
+                }
+            }
+            
+            free(ki->kip1);
+            ki->size = newSize;
+            ki->kip1 = moddedKip;
+            
+            fopen("/FS.kip1", "wb");
+            fwrite(moddedKip, newSize, 1);
+            fclose();
         }
     }
 }
