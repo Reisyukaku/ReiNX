@@ -15,6 +15,7 @@
 */
 
 #include "hwinit/gfx.h"
+#include "hwinit/list.h"
 #include "error.h"
 #include "fs.h"
 #include "package.h"
@@ -140,4 +141,44 @@ void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info) {
     se_aes_crypt_ctr(8, hdr, sizeof(pkg2_hdr_t), hdr, sizeof(pkg2_hdr_t), hdr);
     memset(hdr->ctr, 0 , 0x10);
     *(u32 *)hdr->ctr = 0x100 + sizeof(pkg2_hdr_t) + kernel_size + ini1_size;
+}
+
+size_t calcKipSize(pkg2_kip1_t *kip1) {
+    u32 size = sizeof(pkg2_kip1_t);
+    for (u32 j = 0; j < KIP1_NUM_SECTIONS; j++)
+        size += kip1->sections[j].size_comp;
+    return size;
+}
+
+void pkg2_parse_kips(link_t *info, pkg2_hdr_t *pkg2) {
+    u8 *ptr = pkg2->data + pkg2->sec_size[PKG2_SEC_KERNEL];
+    pkg2_ini1_t *ini1 = (pkg2_ini1_t *)ptr;
+    ptr += sizeof(pkg2_ini1_t);
+
+    for (u32 i = 0; i < ini1->num_procs; i++) {
+        pkg2_kip1_t *kip1 = (pkg2_kip1_t *)ptr;
+        pkg2_kip1_info_t *ki = (pkg2_kip1_info_t *)malloc(sizeof(pkg2_kip1_info_t));
+        ki->kip1 = kip1;
+        ki->size = calcKipSize(kip1);
+        list_append(info, &ki->link);
+        ptr += ki->size;
+    }
+}
+
+void loadKip(link_t *info, char *path) {
+    if(fopen(path, "rb") == 0) return;
+    pkg2_kip1_t *ckip = malloc(fsize());
+    fread(ckip, fsize(), 1);
+    fclose();
+    LIST_FOREACH_ENTRY(pkg2_kip1_info_t, ki, info, link) {
+        if (ki->kip1->tid == ckip->tid) {
+            ki->kip1 = ckip;
+            ki->size = calcKipSize(ckip);
+            return;
+        }
+    }
+    pkg2_kip1_info_t *ki = malloc(sizeof(pkg2_kip1_info_t));
+    ki->kip1 = ckip;
+    ki->size = calcKipSize(ckip);
+    list_append(info, &ki->link);
 }

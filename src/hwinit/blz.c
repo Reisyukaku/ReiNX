@@ -1,4 +1,5 @@
 #include "blz.h"
+#include "../package.h"
 
 s64 Align(s64 data, s64 alignment){
 	return (data + alignment - 1) / alignment * alignment;
@@ -92,7 +93,7 @@ void slide(compress_info * info, const u8 * psrc, int size) {
 }
 
 int result = 0;
-char * blz_compress(unsigned char * decompressed, u32 * isize) {
+u8 * blz_compress(u8 *decompressed, u32 * isize) {
 	result = 1;
 	u8 * dest = malloc(*isize+1);
 	u32 classic_size = *isize;
@@ -208,13 +209,10 @@ char * blz_compress(unsigned char * decompressed, u32 * isize) {
 		return dest;
 		
 	}
-	
-	
-
 }
 
-char * blz_decompress(unsigned char * compressed, u32 * isize) {
-	u32 size = *isize;
+u8 * blz_decompress(u8 *compressed, u32 size) {
+	
 	u32 compressed_size;
 	u32 init_index;
 	u32 uncompressed_addl_size;
@@ -275,93 +273,5 @@ char * blz_decompress(unsigned char * compressed, u32 * isize) {
 				break;
 		}
 	}
-	*isize = decompressed_size;
 	return decomp;
-}
-
-char * kip_comp(char * bytes, u32 * sz) {
-	kiphdr header;
-	kipseg * text_h;
-	kipseg * ro_h;
-	kipseg * data_h;
-	memcpy(&header, bytes, 0x100);
-	if(strncmp(header.magic, "KIP1", 4)) {
-		return NULL;
-	}
-	text_h = &header.segments[0];
-	ro_h = &header.segments[1];
-	data_h = &header.segments[2];
-	
-	u32 toff = sizeof(kiphdr);
-	u32 roff = toff + text_h->filesize;
-	u32 doff = roff + ro_h->filesize;
-	u32 bsssize;
-	memcpy(&bsssize, bytes+0x18, 4);
-	char * text = malloc(text_h->filesize+1);
-	memcpy(text, bytes+toff, text_h->filesize);
-	char * ro = malloc(ro_h->filesize+1);
-	memcpy(ro, bytes+roff, ro_h->filesize);
-	char * data = malloc(data_h->filesize+1);
-	memcpy(data, bytes+doff, data_h->filesize);
-	
-	text = blz_compress(text, &text_h->filesize);
-	ro = blz_compress(ro, &ro_h->filesize);
-	data = blz_compress(data, &data_h->filesize);
-	
-	u32 totalsize = sizeof(kiphdr)+text_h->filesize+ro_h->filesize+data_h->filesize;
-	char * out = malloc(totalsize+1);
-	
-	header.flags |= 7; //set first 3 bits to 1
-	
-	memcpy(out, &header, sizeof(kiphdr));
-	memcpy(out+sizeof(kiphdr), text, text_h->filesize);
-	memcpy(out+sizeof(kiphdr)+text_h->filesize, ro, ro_h->filesize);
-	memcpy(out+sizeof(kiphdr)+text_h->filesize+ro_h->filesize,data, data_h->filesize); 
-	
-	*sz = totalsize;
-	return out;
-}
-
-
-char * kip_decomp(char * bytes, u32 * sz) {
-	kiphdr header;
-	kipseg * text_h;
-	kipseg * ro_h;
-	kipseg * data_h;
-	
-	memcpy(&header, bytes, 0x100);
-	if(strncmp(header.magic, "KIP1", 4)) {
-		return NULL;
-	}
-	text_h = &header.segments[0];
-	ro_h = &header.segments[1];
-	data_h = &header.segments[2];
-
-	u32 toff = sizeof(kiphdr);
-	u32 roff = toff + text_h->filesize;
-	u32 doff = roff + ro_h->filesize;
-	u32 bsssize;
-	memcpy(&bsssize, bytes+0x18, 4);
-	char * text = malloc(text_h->filesize+1);
-	memcpy(text, bytes+toff, text_h->filesize);
-	char * ro = malloc(ro_h->filesize+1);
-	memcpy(ro, bytes+roff, ro_h->filesize);
-	char * data = malloc(data_h->filesize+1);
-	memcpy(data, bytes+doff, data_h->filesize);
-	
-	text = blz_decompress(text, &text_h->filesize);
-	ro = blz_decompress(ro, &ro_h->filesize);
-	data = blz_decompress(data, &data_h->filesize);
-		
-	u32 totalsize = sizeof(kiphdr)+text_h->filesize+ro_h->filesize+data_h->filesize;
-	char * out = malloc(totalsize+1);
-	
-	header.flags &= ~7;  //AND NOT 7 = zero first 3 bits
-	
-	memcpy(out, &header, sizeof(kiphdr));
-	memcpy(out+sizeof(kiphdr), text, text_h->filesize);
-	memcpy(out+sizeof(kiphdr)+text_h->filesize, ro, ro_h->filesize);
-	memcpy(out+sizeof(kiphdr)+text_h->filesize+ro_h->filesize,data, data_h->filesize);  
-	*sz = totalsize;
-	return out;
 }

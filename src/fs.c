@@ -41,7 +41,9 @@ u32 sd_mount() {
 }
 
 u32 fopen(const char *path, const char *mode) {
-    if (f_open(&fp, path, mode[0] == 'w' ? FA_WRITE : FA_READ) != FR_OK) 
+    u32 m = (mode[0] == 0x77 ? (FA_WRITE|FA_CREATE_NEW) : FA_READ);
+    print("%kpath=%s;\tmode=%d\n%k", 0xFFF442DC, path, m, ORANGE);
+    if (f_open(&fp, path, m) != FR_OK) 
         return 0;
     return 1;
 }

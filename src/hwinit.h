@@ -18,6 +18,7 @@
 
 #include <string.h>
 #include "hwinit/btn.h"
+#include "hwinit/blz.h"
 #include "hwinit/clock.h"
 #include "hwinit/cluster.h"
 #include "hwinit/uart.h"
