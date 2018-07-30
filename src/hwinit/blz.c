@@ -226,6 +226,12 @@ u8 * blz_decompress(u8 *compressed, u32 size) {
 	memcpy(decomp, compressed, size);
 	for(int i=size; i<decompressed_size; i++)
 		decomp[i]=0x0;
+	u32 delta = size - compressed_size;
+	if(size!=compressed_size) {
+		memcpy(decomp, compressed, delta);
+		decomp += delta;
+		compressed +=delta;
+	}
 	u32 index = compressed_size - init_index;
 	
 	u32 outindex = decompressed_size;
@@ -273,5 +279,5 @@ u8 * blz_decompress(u8 *compressed, u32 size) {
 				break;
 		}
 	}
-	return decomp;
+	return decomp - delta;
 }
