@@ -154,6 +154,9 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
 
             // calc hash of source kip
             se_calc_sha256(kipHash, ki->kip1, ki->size);
+            // HACK: for some reason it doesn't always compute correct hash the first time,
+            //       but seems to always do it correctly on the second try. maybe there's some
+            //       init code missing to make this work? I don't even
             se_calc_sha256(kipHash, ki->kip1, ki->size);
 
             //Create header
@@ -170,27 +173,20 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
                     kippatchset_t *pset = kippatch_find_set(kipHash, kip_patches);
                     if (!pset) {
                       print("  could not find patchset with matching hash\n");
-                      usleep(6666666);
                     } else {
                       int res = kippatch_apply_set(kipDecompText, moddedKip->sections[i].size_decomp, pset, patchFilter);
                       if (res) {
                           gfx_con_setcol(&gfx_con, RED, 0, 0);
                           print("Error: kippatch_apply_set() returned %d\n", res);
                           gfx_con_setcol(&gfx_con, ORANGE, 0, 0);
-                          usleep(6666666);
                       }
                     }
 
-                    // recompress
-                    // u32 isize = moddedKip->sections[i].size_decomp;
-                    // u8 *kipRecompText = blz_compress(kipDecompText, &isize);
-
-                    moddedKip->flags = 0x3E; // remove this when/if compression works
-                    memcpy((void*)moddedKip->data, kipDecompText, moddedKip->sections[i].size_decomp); // isize
+                    moddedKip->flags = 0x3E;
+                    memcpy((void*)moddedKip->data, kipDecompText, moddedKip->sections[i].size_decomp);
                     free(kipDecompText);
-                    // free(kipRecompText);
                     pos += moddedKip->sections[i].size_comp;
-                    moddedKip->sections[i].size_comp = moddedKip->sections[i].size_decomp; // isize;
+                    moddedKip->sections[i].size_comp = moddedKip->sections[i].size_decomp;
                 } else {
                     if(moddedKip->sections[i].offset == 0) continue;
                     memcpy((void*)moddedKip->data + pos + sizeDiff, (void*)ki->kip1->data + pos, moddedKip->sections[i].size_comp);
@@ -201,10 +197,6 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
             free(ki->kip1);
             ki->size = newSize;
             ki->kip1 = moddedKip;
-            
-            fopen("/FS.kip1", "wb");
-            fwrite(moddedKip, newSize, 1);
-            fclose();
         }
     }
 }
