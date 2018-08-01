@@ -3,7 +3,7 @@
 #include "hwinit/types.h"
 
 typedef struct kipdiff_s {
-  u64 offset;              // offset from kipDecompText
+  u64 offset;              // offset from start of kip's .text segment
   u32 len;                 // length of below strings, NULL signifies end of patch
   const char *orig_bytes;  // original byte string (this must match exactly)
   const char *patch_bytes; // replacement byte string (same length)
@@ -15,8 +15,7 @@ typedef struct kippatch_s {
   kipdiff_t *diffs;        // array of kipdiff_t's to apply
 } kippatch_t;
 
-// a group of patches that patch the same thing in the same kip,
-// but for different kip/fw versions
+// a group of patches that patch several different things in a particular kip version
 typedef struct kippatchset_s {
   const char *kip_name;    // name/id of the kip, NULL signifies end of patchset list
   const char *kip_hash;    // sha256 of the right version of the kip
