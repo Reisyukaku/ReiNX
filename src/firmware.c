@@ -23,6 +23,7 @@
 #include "package.h"
 #include "error.h"
 #include "firmware.h"
+#include "kippatches.h"
 
 #define VERSION "v0.1"
 
@@ -141,13 +142,19 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
     if(!customKern) {
         //TODO
     }
-    
+
+    u8 kipHash[0x20];
+
     //Patch FS module (truly not my proudest code TODO cleanup)
     LIST_FOREACH_ENTRY(pkg2_kip1_info_t, ki, kips, link) {        
         //Patch FS
         if(ki->kip1->tid == 0x0100000000000000) {
             print("Patching FS\n");
-            
+
+            // calc hash of source kip
+            se_calc_sha256(kipHash, ki->kip1, ki->size);
+            se_calc_sha256(kipHash, ki->kip1, ki->size);
+
             //Create header
             size_t sizeDiff = ki->kip1->sections[0].size_decomp - ki->kip1->sections[0].size_comp;
             size_t newSize = ki->size + sizeDiff;
@@ -158,16 +165,31 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
                 if(!i) {
                     //Get decomp .text segment
                     u8 *kipDecompText = blz_decompress(moddedKip->data, moddedKip->sections[i].size_comp);
-                    
-                    /*
-                    *    PATCHES HERE
-                    */
-                    
-                    moddedKip->flags = 0x3E;
-                    memcpy((void*)moddedKip->data, kipDecompText, moddedKip->sections[i].size_decomp);
+
+                    kippatchset_t *pset = kippatch_find_set(kipHash, kip_patches);
+                    if (!pset) {
+                      print("  could not find patchset with matching hash\n");
+                      usleep(6666666);
+                    } else {
+                      int res = kippatch_apply_set(kipDecompText, moddedKip->sections[i].size_decomp, pset, NULL);
+                      if (res) {
+                          gfx_con_setcol(&gfx_con, RED, 0, 0);
+                          print("Error: kippatch_apply_set() returned %d\n", res);
+                          gfx_con_setcol(&gfx_con, ORANGE, 0, 0);
+                          usleep(6666666);
+                      }
+                    }
+
+                    // recompress
+                    // u32 isize = moddedKip->sections[i].size_decomp;
+                    // u8 *kipRecompText = blz_compress(kipDecompText, &isize);
+
+                    moddedKip->flags = 0x3E; // remove this when/if compression works
+                    memcpy((void*)moddedKip->data, kipDecompText, moddedKip->sections[i].size_decomp); // isize
                     free(kipDecompText);
+                    // free(kipRecompText);
                     pos += moddedKip->sections[i].size_comp;
-                    moddedKip->sections[i].size_comp = moddedKip->sections[i].size_decomp;
+                    moddedKip->sections[i].size_comp = moddedKip->sections[i].size_decomp; // isize;
                 } else {
                     if(moddedKip->sections[i].offset == 0) continue;
                     memcpy((void*)moddedKip->data + pos + sizeDiff, (void*)ki->kip1->data + pos, moddedKip->sections[i].size_comp);
