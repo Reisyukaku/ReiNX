@@ -144,6 +144,7 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
     }
 
     u8 kipHash[0x20];
+    char *patchFilter[] = { "nogc", "nosigchk", NULL };
 
     //Patch FS module (truly not my proudest code TODO cleanup)
     LIST_FOREACH_ENTRY(pkg2_kip1_info_t, ki, kips, link) {        
@@ -171,7 +172,7 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
                       print("  could not find patchset with matching hash\n");
                       usleep(6666666);
                     } else {
-                      int res = kippatch_apply_set(kipDecompText, moddedKip->sections[i].size_decomp, pset, NULL);
+                      int res = kippatch_apply_set(kipDecompText, moddedKip->sections[i].size_decomp, pset, patchFilter);
                       if (res) {
                           gfx_con_setcol(&gfx_con, RED, 0, 0);
                           print("Error: kippatch_apply_set() returned %d\n", res);

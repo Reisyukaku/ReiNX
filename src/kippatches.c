@@ -62,7 +62,7 @@ int kippatch_apply(u8 *kipdata, u64 kipdata_len, kippatch_t *patch) {
 
 int kippatch_apply_set(u8 *kipdata, u64 kipdata_len, kippatchset_t *patchset, char **filter) {
   for (kippatch_t *p = patchset->patches; p && p->name; ++p) {
-    /*int found = 0;
+    int found = 0;
     for (char **filtname = filter; filtname && *filtname; ++filtname) {
       if (!strcmp(p->name, *filtname)) {
         found = 1;
@@ -70,7 +70,7 @@ int kippatch_apply_set(u8 *kipdata, u64 kipdata_len, kippatchset_t *patchset, ch
       }
     }
 
-    if (!found) continue;*/
+    if (filter && !found) continue;
 
     int r = kippatch_apply(kipdata, kipdata_len, p);
     if (r) return r;
