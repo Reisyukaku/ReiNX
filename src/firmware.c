@@ -140,7 +140,22 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
     
     //Patch Kernel
     if(!customKern) {
-        //TODO
+        u32 crc = crc32c(pkg2->data, pkg2->sec_size[PKG2_SEC_KERNEL]);
+		const pkg2_kernel_id_t * id = pkg2_identify(crc);
+		
+		kernel_patch_t * kpatch = id->kernel_patchset;
+		if(kpatch!=NULL) {
+			for(int i=0; kpatch[i].id!=-1; i++) {
+				if(kpatch[i].id != ATM_ARR_PATCH)
+					*(vu32 *)(pkg2->data + kpatch[i].off) = kpatch[i].val;
+				else {
+					u32 * temp = (u32 *)kpatch[i].ptr;
+					for(int j=0; j< kpatch[i].val; j++) {
+						*(vu32*)(pkg2->data + kpatch[i].off + j*4) = temp[j];
+					}
+				}
+			}
+		}
     }
 
     u8 kipHash[0x20];

@@ -87,6 +87,14 @@ void pkg1_unpack(pk11_offs *offs, u8 *pkg1) {
     }
 }
 
+const pkg2_kernel_id_t *pkg2_identify(u32 id)
+{
+	for (u32 i = 0; _pkg2_kernel_ids[i].crc32c_id; i++)
+		if (id == _pkg2_kernel_ids[i].crc32c_id)
+			return &_pkg2_kernel_ids[i];
+	return NULL;
+}
+
 void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info) {
     u8 *pdst = (u8 *)0xA9800000;
 
