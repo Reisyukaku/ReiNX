@@ -63,3 +63,17 @@ uPtr memsearch(const u8 *startPos, u32 searchSize, const void *pattern, u32 patt
     }
     return 0;
 }
+
+#define CRC32C_POLY 0x82F63B78
+u32 crc32c(const void *buf, u32 len)
+{
+	const u8 *cbuf = (const u8 *)buf;
+	u32 crc = 0xFFFFFFFF;
+	while (len--)
+	{
+		crc ^= *cbuf++;
+		for (int i = 0; i < 8; i++)
+			crc = crc & 1 ? (crc >> 1) ^ CRC32C_POLY : crc >> 1;
+	}
+	return ~crc;
+}
