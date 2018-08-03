@@ -1,0 +1,3 @@
+[submodule "NX_Sysmodules"]
+	path = NX_Sysmodules
+	url = https://github.com/Reisyukaku/NX_Sysmodules.git

@@ -59,8 +59,8 @@ void drawSplash() {
     if(fopen("/ReiNX/splash.bin", "rb") != 0) {
         fread((void*)0xC0000000, fsize(), 1);
         fclose();
+        usleep(3000000);
     }
-    usleep(3000000);
 }
 
 pk11_offs *pkg11_offsentify(u8 *pkg1) {
@@ -197,7 +197,7 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
                       }
                     }
 
-                    moddedKip->flags = 0x3E;
+                    moddedKip->flags &= ~1;
                     memcpy((void*)moddedKip->data, kipDecompText, moddedKip->sections[i].size_decomp);
                     free(kipDecompText);
                     pos += moddedKip->sections[i].size_comp;

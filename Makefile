@@ -14,6 +14,7 @@ dir_source := src
 dir_data := data
 dir_build := build
 dir_out := out
+dir_sysmod := NX_Sysmodules
 
 ARCH := -march=armv4t -mtune=arm7tdmi -mthumb -mthumb-interwork
 CFLAGS = $(ARCH) -Os -nostdlib -ffunction-sections -fdata-sections -fomit-frame-pointer -fno-inline -fno-builtin -std=gnu11# -Wall
@@ -28,18 +29,30 @@ define bin2o
 endef
 
 .PHONY: all
-all: $(dir_out)/$(name).bin
+all: sysmod reinx
+
+.PHONY: sysmod
+sysmod: $(dir_out)/sysmodules
+
+.PHONY: reinx
+reinx: $(dir_out)/$(name).bin
 
 .PHONY: clean
 clean:
 	@echo "clean ..."
 	@rm -rf $(dir_build)
 	@rm -rf $(dir_out)
+	@$(MAKE) -C $(dir_sysmod) clean
+
+$(dir_out)/sysmodules: $(dir_sysmod)
+	@$(MAKE) -C $(dir_sysmod)
 
 $(dir_out)/$(name).bin: $(dir_build)/$(name).elf
 	@mkdir -p "$(@D)"
 	@mkdir -p "$(dir_out)/ReiNX/sysmodules"
-	@cp -R $(dir_data)/*.kip $(dir_out)/ReiNX/sysmodules/
+	@cp $(dir_sysmod)/loader/loader.kip $(dir_out)/ReiNX/sysmodules/
+	@cp $(dir_sysmod)/sm/sm.kip $(dir_out)/ReiNX/sysmodules/
+	@cp $(dir_sysmod)/fs_mitm/fs_mitm.kip $(dir_out)/ReiNX/sysmodules/
 	@cp -R $(dir_data)/*.bin $(dir_out)/ReiNX/
 	$(OBJCOPY) -S -O binary $< $@
 
