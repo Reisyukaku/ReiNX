@@ -159,7 +159,13 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
     }
 
     u8 kipHash[0x20];
-    char *patchFilter[] = { "nogc", "nosigchk", "nocmac", NULL };
+    char *patchFilter[] = { "nosigchk", "nocmac", "nogc", NULL };
+
+    // disable nogc if there's a file called "disable_nogc" in /ReiNX/
+    if (fopen("/ReiNX/disable_nogc", "rb")) {
+        patchFilter[2] = NULL;
+        fclose();
+    }
 
     //Patch FS module (truly not my proudest code TODO cleanup)
     LIST_FOREACH_ENTRY(pkg2_kip1_info_t, ki, kips, link) {        
