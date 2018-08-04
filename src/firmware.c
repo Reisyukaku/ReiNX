@@ -161,8 +161,9 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
     u8 kipHash[0x20];
     char *patchFilter[] = { "nosigchk", "nocmac", "nogc", NULL };
 
-    // disable nogc if there's a file called "disable_nogc" in /ReiNX/
-    if (fopen("/ReiNX/disable_nogc", "rb")) {
+    // enable nogc if there's a file called "nogc" in /ReiNX/ 
+    //(I expect the 1% of people this effects can read the guide)
+    if (!fopen("/ReiNX/nogc", "rb")) {
         patchFilter[2] = NULL;
         fclose();
     }
