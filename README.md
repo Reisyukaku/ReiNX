@@ -20,12 +20,13 @@ To compile with Docker, `chmod +x docker-build.sh` and run the shell script `./d
 
 * Optional custom kernel/secmon/warmboot
 
-* Exclusive ReiNX sysmodules
+* FS patches on the fly (NCA verify/cmac and optional nogc)
 
-**FAQ:**
+* Exclusive ReiNX sysmodules with built in ES patches
 
-* Wheres muh 'sig patches'? 
-*Refer to the GBAtemp thread. Cant up them because its illegal*
+**Official thread:**
+
+[HERE](https://gbatemp.net/threads/official-reinx-thread.512203/)
 
 **Credits:**
  

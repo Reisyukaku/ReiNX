@@ -18,7 +18,7 @@
 
 #include "hwinit/types.h"
 #include "kippatches.h"
-
+#include "fs.h"
 #include "kippatches/fs.inc"
 
 // TODO: get full hashes somewhere and not just the first 16 bytes
@@ -46,44 +46,48 @@ kippatchset_t kip_patches[] = {
 };
 
 int kippatch_apply(u8 *kipdata, u64 kipdata_len, kippatch_t *patch) {
-  if (!patch || !patch->diffs) return -1;
+    if (!patch || !patch->diffs) return -1;
 
-  for (kipdiff_t *diff = patch->diffs; diff->len; ++diff) {
-    if (!diff->len || diff->offset + diff->len > kipdata_len)
-      return 1 + (int)(diff - patch->diffs);
-    u8 *start = kipdata + diff->offset;
-    if (memcmp(start, diff->orig_bytes, diff->len))
-      return 1 + (int)(diff - patch->diffs);
-    // TODO: maybe start copying after every diff has been verified?
-    memcpy(start, diff->patch_bytes, diff->len);
-  }
+    for (kipdiff_t *diff = patch->diffs; diff->len; ++diff) {
+        if (!diff->len || diff->offset + diff->len > kipdata_len)
+            return 1 + (int)(diff - patch->diffs);
+        u8 *start = kipdata + diff->offset;
+        if (memcmp(start, diff->orig_bytes, diff->len))
+            return 1 + (int)(diff - patch->diffs);
+        // TODO: maybe start copying after every diff has been verified?
+        memcpy(start, diff->patch_bytes, diff->len);
+    }
 
-  return 0;
+    return 0;
 }
 
 int kippatch_apply_set(u8 *kipdata, u64 kipdata_len, kippatchset_t *patchset, char **filter) {
-  for (kippatch_t *p = patchset->patches; p && p->name; ++p) {
-    int found = 0;
-    for (char **filtname = filter; filtname && *filtname; ++filtname) {
-      if (!strcmp(p->name, *filtname)) {
-        found = 1;
-        break;
-      }
+    for (kippatch_t *p = patchset->patches; p && p->name; ++p) {
+        int found = 0;
+        for (char **filtname = filter; filtname && *filtname; ++filtname) {
+            if (!strcmp(p->name, *filtname)) {
+                found = 1;
+                break;
+            }
+        }
+        if (!strcmp(p->name, "nogc")){
+            if(!fopen("/ReiNX/nogc", "rb")) {
+                fclose();
+                continue;
+            }
+        }
+        if (filter && !found) continue;
+
+        int r = kippatch_apply(kipdata, kipdata_len, p);
+        if (r) return r;
     }
 
-    if (filter && !found) continue;
-
-    int r = kippatch_apply(kipdata, kipdata_len, p);
-    if (r) return r;
-  }
-
-  return 0;
+    return 0;
 }
 
 kippatchset_t *kippatch_find_set(u8 *kiphash, kippatchset_t *patchsets) {
-  for (kippatchset_t *ps = patchsets; ps && ps->kip_name; ++ps) {
-    if (!memcmp(kiphash, ps->kip_hash, 0x10))
-      return ps;
-  }
-  return NULL;
+    for (kippatchset_t *ps = patchsets; ps && ps->kip_name; ++ps) {
+        if (!memcmp(kiphash, ps->kip_hash, 0x10)) return ps;
+    }
+    return NULL;
 }
