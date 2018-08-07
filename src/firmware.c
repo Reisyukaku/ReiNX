@@ -25,7 +25,7 @@
 #include "firmware.h"
 #include "kippatches.h"
 
-#define VERSION "v0.1"
+#define VERSION "v1.0"
 
 static pk11_offs *pk11Offs = NULL;
 
