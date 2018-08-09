@@ -70,33 +70,19 @@ int kippatch_apply(u8 *kipdata, u64 kipdata_len, kippatch_t *patch) {
 //dont like it? write your own damn cfw
 int nca_patch(u8 * kipdata, u64 kipdata_len) {
 	char pattern[8] = {0xE5, 0x07, 0x00, 0x32, 0xE0, 0x03, 0x16, 0xAA};
-	//char pattern[8] = {0xE5, 0x07, 0x00, 0x32, 0xE0, 0x03, 0x16, 0xAA};
 	char buf[0x10];
 	memcpy(buf, kipdata+0x1C450, 0x10);
 	u32 * addr = memsearch(kipdata, kipdata_len, pattern, sizeof(pattern));
-	FIL fp;
-	f_open(&fp, "/fuck.txt", "w");
-	for(int i=0; i<0x10; i++) {
-		f_printf(&fp, "0x%x ", buf[i]);
-	}
-	f_printf(&fp, "\n done\n");
 	int ret=0;
 	int max_dist = 0x10;
-	u32 orig=0;
 	for(int i=0; i<max_dist; i++) {
 		u32 op = addr[i];
-		f_printf(&fp, "addr[%d]: %X\n", i, op);
 		if((op & 0xFC000000)==0x94000000) { //is a BL op
-			orig=op;
-			op = NOP;
+			addr[i] = NOP;
 			ret=1;
 			break;
 		}
 	}
-	f_close(&fp);
-	f_open(&fp, "/log.txt", "w");
-	f_printf(&fp, "addr: %X\n dist=%D\n orig_op: %X\n ret=%D\n", addr, max_dist, orig, ret);
-	f_close(&fp);
 	return ret;
 }
 
