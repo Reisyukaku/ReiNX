@@ -17,10 +17,14 @@
 #include <string.h>
 
 #include "hwinit/types.h"
+#include "hwinit/ff.h"
 #include "kippatches.h"
+#include "hwinit/util.h"
 #include "fs.h"
 #include "kippatches/fs.inc"
 
+//#define NOP 0x1F2003D5
+#define NOP 0xD503201F
 // TODO: get full hashes somewhere and not just the first 16 bytes
 // every second one is the exfat version
 kippatchset_t kip_patches[] = {
@@ -61,6 +65,41 @@ int kippatch_apply(u8 *kipdata, u64 kipdata_len, kippatch_t *patch) {
     return 0;
 }
 
+//this function is political
+//it stands with donald trump
+//dont like it? write your own damn cfw
+int nca_patch(u8 * kipdata, u64 kipdata_len) {
+	char pattern[8] = {0xE5, 0x07, 0x00, 0x32, 0xE0, 0x03, 0x16, 0xAA};
+	//char pattern[8] = {0xE5, 0x07, 0x00, 0x32, 0xE0, 0x03, 0x16, 0xAA};
+	char buf[0x10];
+	memcpy(buf, kipdata+0x1C450, 0x10);
+	u32 * addr = memsearch(kipdata, kipdata_len, pattern, sizeof(pattern));
+	FIL fp;
+	f_open(&fp, "/fuck.txt", "w");
+	for(int i=0; i<0x10; i++) {
+		f_printf(&fp, "0x%x ", buf[i]);
+	}
+	f_printf(&fp, "\n done\n");
+	int ret=0;
+	int max_dist = 0x10;
+	u32 orig=0;
+	for(int i=0; i<max_dist; i++) {
+		u32 op = addr[i];
+		f_printf(&fp, "addr[%d]: %X\n", i, op);
+		if((op & 0xFC000000)==0x94000000) { //is a BL op
+			orig=op;
+			op = NOP;
+			ret=1;
+			break;
+		}
+	}
+	f_close(&fp);
+	f_open(&fp, "/log.txt", "w");
+	f_printf(&fp, "addr: %X\n dist=%D\n orig_op: %X\n ret=%D\n", addr, max_dist, orig, ret);
+	f_close(&fp);
+	return ret;
+}
+
 int kippatch_apply_set(u8 *kipdata, u64 kipdata_len, kippatchset_t *patchset, char **filter) {
     for (kippatch_t *p = patchset->patches; p && p->name; ++p) {
         int found = 0;
@@ -76,7 +115,7 @@ int kippatch_apply_set(u8 *kipdata, u64 kipdata_len, kippatchset_t *patchset, ch
         int r = kippatch_apply(kipdata, kipdata_len, p);
         if (r) return r;
     }
-
+	nca_patch(kipdata, kipdata_len);
     return 0;
 }
 
