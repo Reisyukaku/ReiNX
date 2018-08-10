@@ -29,18 +29,6 @@
 
 static pk11_offs *pk11Offs = NULL;
 
-// TODO: Maybe find these with memsearch
-static const pk11_offs _pk11_offs[] = {
-    //{ "20161121183008", 0, 0x1900, 0x3FE0, { 2, 1, 0 }, 0x4002B020, 0x8000D000, 1 }, //TODO: relocator patch for 1.0.0
-    { "20161121183008", 0, 0x1900, 0x3FE0, { 2, 1, 0 }, 0x40014020, 0x8000D000, 1 }, //1.0.0
-    { "20170210155124", 0, 0x1900, 0x3FE0, { 0, 1, 2 }, 0x4002D000, 0x8000D000, 1 }, //2.0.0 - 2.3.0
-    { "20170519101410", 1, 0x1A00, 0x3FE0, { 0, 1, 2 }, 0x4002D000, 0x8000D000, 1 }, //3.0.0
-    { "20170710161758", 2, 0x1A00, 0x3FE0, { 0, 1, 2 }, 0x4002D000, 0x8000D000, 1 }, //3.0.1 - 3.0.2
-    { "20170921172629", 3, 0x1800, 0x3FE0, { 1, 2, 0 }, 0x4002B000, 0x4003B000, 0 }, //4.0.0 - 4.1.0
-    { "20180220163747", 4, 0x1900, 0x3FE0, { 1, 2, 0 }, 0x4002B000, 0x4003B000, 0 }, //5.0.0 - 5.0.2
-    { NULL, 0, 0, 0, 0 } // End.
-};
-
 static void SE_lock() {
     for (u32 i = 0; i < 16; i++)
         se_key_acc_ctrl(i, 0x15);
@@ -173,13 +161,9 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
         //Patch FS
         if(ki->kip1->tid == 0x0100000000000000) {
             print("Patching FS\n");
-
-            // calc hash of source kip
-            se_calc_sha256(kipHash, ki->kip1, ki->size);
-            // HACK: for some reason it doesn't always compute correct hash the first time,
-            //       but seems to always do it correctly on the second try. maybe there's some
-            //       init code missing to make this work? I don't even
-            se_calc_sha256(kipHash, ki->kip1, ki->size);
+            
+            se_calc_sha256(&kipHash, ki->kip1, ki->size);
+            se_calc_sha256(&kipHash, ki->kip1, ki->size);
 
             //Create header
             size_t sizeDiff = ki->kip1->sections[0].size_decomp - ki->kip1->sections[0].size_comp;
