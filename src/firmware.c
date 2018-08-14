@@ -398,9 +398,12 @@ void firmware() {
     gfx_con_init(&gfx_con, &gfx_ctxt);
     gfx_con_setcol(&gfx_con, ORANGE, 0, 0);
 
-    if (!sd_mount()) {
+    while (!sd_mount()) {
         error("Failed to init SD card!\n");
-        return;
+        print("Press POWER to power off, any other key to retry\n");
+        if (btn_wait() & BTN_POWER)
+            i2c_send_byte(I2C_5, 0x3C, MAX77620_REG_ONOFFCNFG1, MAX77620_ONOFFCNFG1_PWR_OFF);
+        btn_wait();
     }
 
     print("Welcome to ReiNX %s!\n", VERSION);
