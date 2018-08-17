@@ -1,6 +1,11 @@
-FROM devkitpro/devkitarm:latest
-MAINTAINER jski "jski185@gmail.com"
+FROM devkitpro/devkita64
+MAINTAINER elelphatp "elephantp@elephantp.blog"
 
-ADD . /
+RUN dkp-pacman -Syyu --noconfirm devkitARM && \
+    dkp-pacman -Scc --noconfirm
+
+ENV DEVKITARM=${DEVKITPRO}/devkitARM
+
+WORKDIR /developer
 
 ENTRYPOINT ["make"]
