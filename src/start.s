@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2018 naehrwert
+* Copyright (c) 2018 naehrwert, Reisyukaku
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms and conditions of the GNU General Public License,
@@ -17,14 +17,20 @@
 .section .text.start
 .arm
 
-.extern _reloc_ipl
-.type _reloc_ipl, %function
-
 .extern memset
 .type memset, %function
 
-.extern ipl_main
-.type ipl_main, %function
+.extern heap_init
+.type heap_init, %function
+
+.extern bootrom
+.type bootrom, %function
+
+.extern bootloader
+.type bootloader, %function
+
+.extern firmware
+.type firmware, %function
 
 .globl _start
 .type _start, %function
@@ -73,18 +79,3 @@ _real_start:
 	BL bootloader
 	BL firmware
 	B .
-
-.globl rebootRCM
-.type rebootRCM, %function
-rebootRCM:
-	MOVS    R3, #2
-	LDR     R2, =0x7000E450
-	LDR     R1, [R2]
-	ORRS    R3, R1
-	STR     R3, [R2]
-	MOVS    R3, #0x10
-	LDR     R2, =0x7000E400
-	LDR     R1, [R2]
-	ORRS    R3, R1
-	MOVS    R0, #0
-	STR     R3, [R2]
