@@ -19,4 +19,5 @@
 #include "hwinit/types.h"
 
 int drawSplash();
-int loadBmp(char * filename);
+int loadBmp();
+void splash();

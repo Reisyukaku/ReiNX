@@ -400,6 +400,6 @@ void firmware() {
 
     print("Welcome to ReiNX %s!\n", VERSION);
     loadFirm();
-    (loadBmp("/ReiNX/splash.bmp") == 0) || drawSplash();
+    splash();
     launch();
 }

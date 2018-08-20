@@ -31,8 +31,8 @@ int drawSplash() {
     return -1;
 }
 
-int loadBmp(char * filename) {
-    if (fopen(filename, "rb") == 0)
+int loadBmp() {
+    if (fopen("/ReiNX/splash.bmp", "rb") == 0)
         return -1;
 
     unsigned char * bmp;
@@ -76,11 +76,23 @@ int loadBmp(char * filename) {
             pad_counter = 0;
         }
     }
+
+    // Save to file
+    if(fopen("/ReiNX/splash.bin", "wb") != 0) {
+        fwrite(out, 0x3C0008, 1);
+        fclose();
+    }
     
     // Finish
-    memcpy((void*)0xC0000000, out, 0x3C0008);
     free(out);
     free(bmp);
-    usleep(3000000);
+    drawSplash();
     return 0;
+}
+
+void splash() {
+    if (drawSplash() != 0){
+        // Failed to open splash.bin, try .bmp
+        loadBmp();
+    }
 }
