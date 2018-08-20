@@ -25,7 +25,6 @@ int drawSplash() {
     if(fopen("/ReiNX/splash.bin", "rb") != 0) {
         fread((void*)0xC0000000, fsize(), 1);
         fclose();
-        usleep(3000000);
         return 0;
     }
     return -1;

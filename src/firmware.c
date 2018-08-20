@@ -398,8 +398,12 @@ void firmware() {
         btn_wait();
     }
 
+    if(!(btn_read() & BTN_VOL_DOWN)){
+        gfx_con.mute = 1;
+        splash();
+    }
+
     print("Welcome to ReiNX %s!\n", VERSION);
     loadFirm();
-    splash();
     launch();
 }
