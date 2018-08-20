@@ -24,6 +24,7 @@
 #include "error.h"
 #include "firmware.h"
 #include "kippatches.h"
+#include "splash.h"
 
 #define VERSION "v1.0"
 
@@ -40,15 +41,6 @@ static void SE_lock() {
     SE(SE_KEY_TABLE_ACCESS_LOCK_OFFSET) = 0; // Make all key access regs secure only.
     SE(SE_RSA_KEYTABLE_ACCESS_LOCK_OFFSET) = 0; // Make all rsa access regs secure only.
     SE(SE_SECURITY_0) &= 0xFFFFFFFB; // Make access lock regs secure only.
-}
-
-void drawSplash() {
-    // Draw splashscreen to framebuffer.
-    if(fopen("/ReiNX/splash.bin", "rb") != 0) {
-        fread((void*)0xC0000000, fsize(), 1);
-        fclose();
-        usleep(3000000);
-    }
 }
 
 pk11_offs *pkg11_offsentify(u8 *pkg1) {
@@ -406,8 +398,12 @@ void firmware() {
         btn_wait();
     }
 
+    if(!(btn_read() & BTN_VOL_DOWN)){
+        gfx_con.mute = 1;
+        splash();
+    }
+
     print("Welcome to ReiNX %s!\n", VERSION);
     loadFirm();
-    drawSplash();
     launch();
 }
