@@ -24,6 +24,7 @@
 #include "error.h"
 #include "firmware.h"
 #include "kippatches.h"
+#include "splash.h"
 
 #define VERSION "v1.0"
 
@@ -40,72 +41,6 @@ static void SE_lock() {
     SE(SE_KEY_TABLE_ACCESS_LOCK_OFFSET) = 0; // Make all key access regs secure only.
     SE(SE_RSA_KEYTABLE_ACCESS_LOCK_OFFSET) = 0; // Make all rsa access regs secure only.
     SE(SE_SECURITY_0) &= 0xFFFFFFFB; // Make access lock regs secure only.
-}
-
-int drawSplash() {
-    // Draw splashscreen to framebuffer.
-    if(fopen("/ReiNX/splash.bin", "rb") != 0) {
-        fread((void*)0xC0000000, fsize(), 1);
-        fclose();
-        usleep(3000000);
-        return 0;
-    }
-    return -1;
-}
-
-int loadBmp (char * filename) {
-    print("Loading splash.bmp...\n");
-    if (fopen(filename, "rb") == 0)
-        return -1;
-
-    unsigned char * bmp;
-    bmp = malloc(fsize());
-
-    // Read data
-    fread(bmp, fsize(), 1);
-    fclose();
-
-    // Get details of the image & validate them
-    static int size, offset, width, height, colordep;
-    size     = fsize();
-    offset   = (bmp[11] << 8) | bmp[10];
-    width    = (bmp[19] << 8) | bmp[18];
-    height   = (bmp[23] << 8) | bmp[22];
-    colordep =  bmp[28];
-
-    if (width   != 720 
-    || height   != 1280
-    || colordep != 24) {
-        free(bmp);
-        return -1;
-    }
-
-    // Init destination for decoded .bmp
-    unsigned char * out = malloc(0x3C0008);
-    strncpy(out, "00921600", 8);
-
-    // Swap bytes and pad where necessary
-    int index = 8;
-    int pad_counter = 0;
-    for (int i = offset; i < size - offset - 2; i += 3){
-        out[  index  ] = bmp[i + 2];
-        out[index + 1] = bmp[i + 1];
-        out[index + 2] = bmp[  i  ];
-        out[index + 3] = 0;
-        index += 4;
-        pad_counter++;
-        if (pad_counter == 720){
-            index += 192;
-            pad_counter = 0;
-        }
-    }
-    
-    // Finish
-    memcpy((void*)0xC0000000, out, 0x3C0008);
-    free(out);
-    free(bmp);
-    usleep(3000000);
-    return 0;
 }
 
 pk11_offs *pkg11_offsentify(u8 *pkg1) {
