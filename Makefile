@@ -53,7 +53,6 @@ $(dir_out)/$(name).bin: $(dir_build)/$(name).elf
 	@mkdir -p "$(dir_out)/ReiNX/patches"
 	@cp $(dir_sysmod)/loader/loader.kip $(dir_out)/ReiNX/sysmodules/
 	@cp $(dir_sysmod)/sm/sm.kip $(dir_out)/ReiNX/sysmodules/
-	@cp $(dir_sysmod)/fs_mitm/fs_mitm.kip $(dir_out)/ReiNX/sysmodules/
 	@cp -R $(dir_data)/*.bin $(dir_out)/ReiNX/
 	@cp -R $(dir_data)/*.rxp $(dir_out)/ReiNX/patches
 	$(OBJCOPY) -S -O binary $< $@
