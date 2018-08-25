@@ -1,16 +1,21 @@
 #!/usr/bin/env bash
-ECHO ""
-ECHO "Emptying out /build and /out folders..."
-ECHO ""
-rm -rf ./build
-rm -rf ./out
+echo "Checking reinx-builder image..."
 
-ECHO ""
-ECHO "Building docker image locally..."
-ECHO ""
-docker build . -t reinx-builder:latest
+IMAGE=`docker image ls|grep reinx-builder -c`
+if [[ "$IMAGE" == 1 ]]; then
+  echo "Reinx-builder image is exist"
+else
+  echo ""
+  echo "Building docker image locally..."
+  echo ""
+  docker build . -t reinx-builder
+fi
 
-ECHO ""
-ECHO "Running image and generating build..."
-ECHO ""
-docker run -v $(pwd)/build:/build -v $(pwd)/out:/out reinx-builder:latest
+echo "Checking container...."
+CONTAINER=`docker ps -a|grep reinx-builder -c`
+echo "Building..."
+if [[ "$CONTAINER" == 1 ]]; then
+  docker start -a reinx-builder
+else
+  docker run -a stdout -a stderr --name reinx-builder -v $(pwd):/developer reinx-builder
+fi

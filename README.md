@@ -11,7 +11,7 @@ Put `ReiNX` folder on the root of your switch's SD card and run `ReiNX.bin` with
 
 You'll need devkitpro with devkitARM and run `make`
 
-To compile with Docker, `chmod +x docker-build.sh` and run the shell script `./docker-build.sh`. This will compile without requiring installation of DevKit* dependencies.
+To compile with Docker, `chmod +x docker-build.sh` and run the shell script `./docker-build.sh`. After that, just check `out` dir. This will compile without requiring installation of DevKit* dependencies.
 
 
 **Features:**
@@ -29,11 +29,11 @@ To compile with Docker, `chmod +x docker-build.sh` and run the shell script `./d
 [HERE](https://gbatemp.net/threads/official-reinx-thread.512203/)
 
 **Credits:**
- 
+
  Naehrwert for hardware init code and generally being helpful!
- 
+
  CTCaer and st4rk for their contribution to the hardware code aswell!
- 
+
  SciresM for sysmodules!
- 
+
  The community for your support!
