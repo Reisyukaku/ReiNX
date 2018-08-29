@@ -398,14 +398,25 @@ void firmware() {
     gfx_con_init(&gfx_con, &gfx_ctxt);
     gfx_con_setcol(&gfx_con, ORANGE, 0, 0);
 
-    while (!sd_mount()) {
+    while (!sdMount()) {
         error("Failed to init SD card!\n");
         print("Press POWER to power off, any other key to retry\n");
         if (btn_wait() & BTN_POWER)
             i2c_send_byte(I2C_5, 0x3C, MAX77620_REG_ONOFFCNFG1, MAX77620_ONOFFCNFG1_PWR_OFF);
         btn_wait();
     }
-
+    
+    if(PMC(APBDEV_PMC_SCRATCH49_0) != 69 && fopen("/ReiNX.bin", "rb")) {
+        fread((void*)PAYLOAD_ADDR, fsize(), 1);
+        fclose();
+        sdUnmount();
+        display_end();
+        CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_V) |= 0x400; // Enable AHUB clock.
+        CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_Y) |= 0x40;  // Enable APE clock.
+        PMC(APBDEV_PMC_SCRATCH49_0) = 69;
+        ((void (*)())PAYLOAD_ADDR)();
+    }
+    
     print("Welcome to ReiNX %s!\n", VERSION);
     loadFirm();
     drawSplash();

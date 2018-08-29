@@ -28,7 +28,7 @@ FATFS sd_fs;
 int sd_mounted;
 FIL fp;
 
-u32 sd_mount() {
+u32 sdMount() {
     if (sd_mounted) return 1;
 
     if (sdmmc_storage_init_sd(&sd_storage, &sd_sdmmc, SDMMC_1, SDMMC_BUS_WIDTH_4, 11) && f_mount(&sd_fs, "", 1) == FR_OK) {
@@ -37,6 +37,13 @@ u32 sd_mount() {
     }
 
     return 0;
+}
+
+void sdUnmount() {
+    f_mount(NULL, "", 1);
+    sdmmc_storage_end(&sd_storage);
+    sd_mounted = 0;
+
 }
 
 u32 fopen(const char *path, const char *mode) {

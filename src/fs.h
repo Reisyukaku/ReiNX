@@ -16,7 +16,8 @@
 
 #pragma once
 
-u32 sd_mount();
+u32 sdMount();
+void sdUnmount();
 u32 fopen(const char *path, const char *mode);
 u32 fread(void *buf, size_t size, size_t ntimes);
 u32 fwrite(void *buf, size_t size, size_t ntimes);
