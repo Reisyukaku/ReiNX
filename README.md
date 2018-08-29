@@ -1,11 +1,11 @@
 # ReiNX
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
 
-*The modular switch custom firmware*
+*The minimalist Nintendo Switch bootloader*
 
 **Usage:**
 
-Put `ReiNX` folder on the root of your switch's SD card and run `ReiNX.bin` with your favorite fusee launcher.
+Put the `ReiNX` folder on the root of your switch's SD card and run `ReiNX.bin` with your favorite fusee launcher.
 
 **Compiling:**
 
@@ -21,8 +21,6 @@ To compile with Docker, `chmod +x docker-build.sh` and run the shell script `./d
 * Optional custom kernel/secmon/warmboot
 
 * FS patches on the fly (NCA verify/cmac and optional nogc)
-
-* Exclusive ReiNX sysmodules with built in ES patches
 
 **Official thread:**
 
