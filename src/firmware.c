@@ -163,7 +163,6 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
             print("Patching FS\n");
             
             se_calc_sha256(&kipHash, ki->kip1, ki->size);
-            se_calc_sha256(&kipHash, ki->kip1, ki->size);
 
             //Create header
             size_t sizeDiff = ki->kip1->sections[0].size_decomp - ki->kip1->sections[0].size_comp;
