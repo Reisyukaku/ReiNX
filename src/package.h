@@ -31,6 +31,7 @@
 #define FREE_CODE_OFF_1ST_302 0x494BC
 #define FREE_CODE_OFF_1ST_400 0x52890
 #define FREE_CODE_OFF_1ST_500 0x5C020
+#define FREE_CODE_OFF_1ST_600 0x5EE00
 
 #define ID_SND_OFF_100 0x23CC0
 #define ID_SND_OFF_200 0x3F134
@@ -38,6 +39,7 @@
 #define ID_SND_OFF_302 0x26080
 #define ID_SND_OFF_400 0x2AF64
 #define ID_SND_OFF_500 0x2AD34
+#define ID_SND_OFF_600 0x2BB88
 
 #define ID_RCV_OFF_100 0x219F0
 #define ID_RCV_OFF_200 0x3D1A8
@@ -45,7 +47,10 @@
 #define ID_RCV_OFF_302 0x240F0
 #define ID_RCV_OFF_400 0x28F6C
 #define ID_RCV_OFF_500 0x28DAC
+#define ID_RCV_OFF_600 0x29B6C
 
+#define NOP 0xD503201F
+#define ADRP(r, o) 0x90000000 | ((((o) >> 12) & 0x3) << 29) | ((((o) >> 12) & 0x1FFFFC) << 3) | ((r) & 0x1F)
 
 static u8 customSecmon = 0;
 static u8 customWarmboot = 0;
@@ -225,6 +230,18 @@ static u32 PRC_ID_RCV_500[] =
 	0xD2FFFFC9, 0xEB09015F, 0x54000040, 0xF9415B08, 0xF9406FEA
 };
 
+static u32 PRC_ID_SND_600[] =
+{
+	0x2A1703EA, 0xD37EF54A, 0xF86A6B6A, 0x92FFFFE9, 0x8A090148, 0xD2FFFFE9, 0x8A09014A, 0xD2FFFFC9,
+	0xEB09015F, 0x54000060, 0xF94043EA, 0xF9415948, 0xF94043EA
+};
+#define FREE_CODE_OFF_2ND_600 (FREE_CODE_OFF_1ST_600 + sizeof(PRC_ID_SND_600) + 4)
+static u32 PRC_ID_RCV_600[] =
+{
+	0xF9403BED, 0x2A1503EA, 0xD37EF54A, 0xF86A69AA, 0x92FFFFE9, 0x8A090148, 0xD2FFFFE9, 0x8A09014A,
+	0xD2FFFFC9, 0xEB09015F, 0x54000040, 0xF9415B08, 0xF9406FEA
+};
+
 
 static kernel_patch_t kern1[] = {
 	{ SVC_VERIFY_DS, 0x3764C, _NOP(), NULL },          // Disable SVC verifications
@@ -313,6 +330,21 @@ static kernel_patch_t kern5[] = {
 	{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, (u32*)0xFFFFFFFF}
 };
 
+static kernel_patch_t kern6[] = {
+	{ SVC_VERIFY_DS, 0x47E98, _NOP(), NULL },          // Disable SVC verifications
+	{ DEBUG_MODE_EN, 0x52D40, _MOVZX(8, 1, 0), NULL }, // Enable Debug Patch
+	// Atmosphère kernel patches.
+	{ ATM_GEN_PATCH, ID_SND_OFF_600, _B(ID_SND_OFF_600, FREE_CODE_OFF_1ST_600), NULL},    // Send process id branch.
+	{ ATM_ARR_PATCH, FREE_CODE_OFF_1ST_600, sizeof(PRC_ID_SND_600) >> 2, PRC_ID_SND_600}, // Send process id code.
+	{ ATM_GEN_PATCH, FREE_CODE_OFF_1ST_600 + sizeof(PRC_ID_SND_600),                      // Branch back and skip 2 instructions.
+		_B(FREE_CODE_OFF_1ST_600 + sizeof(PRC_ID_SND_600), ID_SND_OFF_600 + 8), NULL},
+	{ ATM_GEN_PATCH, ID_RCV_OFF_600, _B(ID_RCV_OFF_600, FREE_CODE_OFF_2ND_600), NULL},    // Receive process id branch.
+	{ ATM_ARR_PATCH, FREE_CODE_OFF_2ND_600, sizeof(PRC_ID_RCV_600) >> 2, PRC_ID_RCV_600}, // Receive process id code.
+	{ ATM_GEN_PATCH, FREE_CODE_OFF_2ND_600 + sizeof(PRC_ID_RCV_600),                      // Branch back and skip 2 instructions.
+		_B(FREE_CODE_OFF_2ND_600 + sizeof(PRC_ID_RCV_600), ID_RCV_OFF_600 + 8), NULL},
+	{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, (u32*)0xFFFFFFFF}
+};
+
 static const pkg2_kernel_id_t _pkg2_kernel_ids[] =
 {
 	{ 0x427f2647, kern1 },   //1.0.0
@@ -321,9 +353,37 @@ static const pkg2_kernel_id_t _pkg2_kernel_ids[] =
 	{ 0xe0e8cdc4, kern302 }, //3.0.2
 	{ 0x485d0157, kern4 },   //4.0.0 - 4.1.0
 	{ 0xf3c363f2, kern5 },   //5.0.0 - 5.1.0
+    { 0x64ce1a44, kern6 },   //6.0.0
 	{ 0, 0 }                              //End.
 };
 
+typedef struct kipdiff_s {
+  u64 offset;              // offset from start of kip's .text segment
+  u32 len;                 // length of below strings, NULL signifies end of patch
+  const char *orig_bytes;  // original byte string (this must match exactly)
+  const char *patch_bytes; // replacement byte string (same length)
+} kipdiff_t;
+
+// a single patch for a particular kip version
+typedef struct kippatch_s {
+  const char *name;        // name/id of the patch, NULL signifies end of patchset
+  kipdiff_t *diffs;        // array of kipdiff_t's to apply
+} kippatch_t;
+
+// a group of patches that patch several different things in a particular kip version
+typedef struct kippatchset_s {
+  const char *kip_name;    // name/id of the kip, NULL signifies end of patchset list
+  const char *kip_hash;    // sha256 of the right version of the kip
+  kippatch_t *patches;     // set of patches for this version of the kip
+} kippatchset_t;
+
+
+extern kippatchset_t kip_patches[];
+u8 *ReadPackage1(sdmmc_storage_t *storage);
+u8 *ReadPackage2(sdmmc_storage_t *storage);
+int kippatch_apply(u8 *kipdata, u64 kipdata_len, kippatch_t *patch);
+int kippatch_apply_set(u8 *kipdata, u64 kipdata_len, kippatchset_t *patchset);
+kippatchset_t *kippatch_find_set(u8 *kiphash, kippatchset_t *patchsets);
 pkg2_hdr_t *unpackFirmwarePackage(u8 *data);
 void pkg1_unpack(pk11_offs *offs, u8 *pkg1);
 void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info);

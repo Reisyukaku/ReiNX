@@ -42,3 +42,6 @@
 #include "hwinit/se.h"
 #include "hwinit/se_t210.h"
 #include "hwinit/mmc.h"
+#include "hwinit/gfx.h"
+
+#define DEFAULT_TEXT_COL ORANGE

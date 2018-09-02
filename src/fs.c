@@ -17,7 +17,6 @@
 #include <stddef.h>
 #include <string.h>
 #include "hwinit.h"
-#include "hwinit/gfx.h"
 #include "hwinit/ff.h"
 #include "error.h"
 #include "fs.h"
@@ -40,10 +39,10 @@ u32 sdMount() {
 }
 
 void sdUnmount() {
+    if (!sd_mounted) return;
     f_mount(NULL, "", 1);
     sdmmc_storage_end(&sd_storage);
     sd_mounted = 0;
-
 }
 
 u32 fopen(const char *path, const char *mode) {

@@ -64,6 +64,19 @@ uPtr memsearch(const u8 *startPos, u32 searchSize, const void *pattern, u32 patt
     return 0;
 }
 
+//probably could be more optimized :<
+uPtr getFreeSpace(void *start, size_t space, size_t searchSize) {
+    for(int i = 0; i < searchSize; i++) {
+        if(*(u8*)(start+i) == 0) {
+            for(int j=0;j<space;j++) {
+                if(*(u8*)(start+i+j) != 0) break;
+                if(j==space-1) return (uintptr_t)(start+i);
+            }
+        }
+    }
+    return 0;
+}
+
 #define CRC32C_POLY 0x82F63B78
 u32 crc32c(const void *buf, u32 len)
 {

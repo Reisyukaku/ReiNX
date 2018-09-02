@@ -17,7 +17,6 @@
 #pragma once
 
 #include "hwinit/types.h"
-#include "hwinit/gfx.h"
 
 void panic();
 void error(char *errStr);

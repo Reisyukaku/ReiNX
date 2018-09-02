@@ -2,8 +2,8 @@ ENTRY(_start)
 
 SECTIONS 
 {
-	PROVIDE(__ipl_start = 0x40003000);
-	. = __ipl_start;
+	PROVIDE(payload_start = 0x40003000);
+	. = payload_start;
 	.text.start : 
 	{ 
 		*(.text.start)
@@ -18,7 +18,7 @@ SECTIONS
 		*(.rodata*);
 	}
 	. = ALIGN(0x10);
-	__ipl_end = .;
+	payload_end = .;
 	.bss : 
 	{
 		__bss_start = .;

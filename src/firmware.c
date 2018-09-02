@@ -17,30 +17,12 @@
 #include <string.h>
 #include <stddef.h>
 #include "hwinit.h"
-#include "hwinit/gfx.h"
 #include "fs.h"
-#include "fuse.h"
 #include "package.h"
 #include "error.h"
 #include "firmware.h"
-#include "kippatches.h"
-
-#define VERSION "v1.0"
 
 static pk11_offs *pk11Offs = NULL;
-
-static void SE_lock() {
-    for (u32 i = 0; i < 16; i++)
-        se_key_acc_ctrl(i, 0x15);
-
-    for (u32 i = 0; i < 2; i++)
-        se_rsa_acc_ctrl(i, 1);
-
-    SE(0x4) = 0; // Make this reg secure only.
-    SE(SE_KEY_TABLE_ACCESS_LOCK_OFFSET) = 0; // Make all key access regs secure only.
-    SE(SE_RSA_KEYTABLE_ACCESS_LOCK_OFFSET) = 0; // Make all rsa access regs secure only.
-    SE(SE_SECURITY_0) &= 0xFFFFFFFB; // Make access lock regs secure only.
-}
 
 void drawSplash() {
     // Draw splashscreen to framebuffer.
@@ -68,7 +50,6 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
         uPtr *sha2_ptr = NULL;
         switch(pk11->kb) {
             case KB_FIRMWARE_VERSION_100_200: {
-                //u8 rlcPattern[] = {0xE0, 0xFF, 0x1D, 0xF0, 0x00, 0x00, 0x00, 0x91}; //TODO: relocator patch for 1.0.0
                 u8 verPattern[] = {0x19, 0x00, 0x36, 0xE0, 0x03, 0x08, 0x91};
                 u8 hdrSigPattern[] = {0xFF, 0x97, 0xC0, 0x00, 0x00, 0x34, 0xA1, 0xFF, 0xFF};
                 u8 sha2Pattern[] = {0xE0, 0x03, 0x08, 0x91, 0xE1, 0x03, 0x13, 0xAA};
@@ -103,7 +84,7 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
                 sha2_ptr = (uPtr*)memsearch((void *)pk11->secmon_base, 0x10000, sha2Pattern, sizeof(sha2Pattern));
                 break;
             }
-            default: {
+            case KB_FIRMWARE_VERSION_500: {
                 u8 verPattern[] = {0x00, 0x01, 0x00, 0x36, 0xFD, 0x7B, 0x41, 0xA9};
                 u8 hdrSigPattern[] = {0x86, 0xFE, 0xFF, 0x97, 0x80, 0x00, 0x00, 0x36};
                 u8 sha2Pattern[] = {0xF2, 0xFB, 0xFF, 0x97, 0xE0, 0x03};
@@ -111,13 +92,22 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
                 ver_ptr = (uPtr*)memsearch((void *)pk11->secmon_base, 0x10000, verPattern, sizeof(verPattern));
                 pk21_ptr = (uPtr*)((u32)ver_ptr - 0xC);
                 hdrsig_ptr = (uPtr*)(memsearch((void *)pk11->secmon_base, 0x10000, hdrSigPattern, sizeof(hdrSigPattern)) + 0x4);
-                sha2_ptr = (uPtr*)memsearch((void *)pk11->secmon_base, 0x10000, sha2Pattern, sizeof(sha2Pattern));
+                sha2_ptr = (uPtr*)(memsearch((void *)pk11->secmon_base, 0x10000, sha2Pattern, sizeof(sha2Pattern)));
+                break;
+            }
+            default: {
+                u8 verPattern[] = {0x00, 0x01, 0x00, 0x36, 0xFD, 0x7B, 0x41, 0xA9};
+                u8 hdrSigPattern[] = { 0x9A, 0xFF, 0xFF, 0x97, 0x80, 0x00, 0x00, 0x36};
+                u8 sha2Pattern[] = {0x81, 0x00, 0x80, 0x72, 0xB5, 0xFB, 0xFF, 0x97};
+
+                ver_ptr = (uPtr*)memsearch((void *)pk11->secmon_base, 0x10000, verPattern, sizeof(verPattern));
+                pk21_ptr = (uPtr*)((u32)ver_ptr - 0xC);
+                hdrsig_ptr = (uPtr*)(memsearch((void *)pk11->secmon_base, 0x10000, hdrSigPattern, sizeof(hdrSigPattern)) + 0x4);
+                sha2_ptr = (uPtr*)(memsearch((void *)pk11->secmon_base, 0x10000, sha2Pattern, sizeof(sha2Pattern)) + 0x4);
                 break;
             }
         }
-        /*if (pre2x) { //TODO: relocator patch for 1.0.0
-            *rlc_ptr = ADRP(0, 0x3BFE8020);
-        };*/
+        
         if (pk11->kb != KB_FIRMWARE_VERSION_100_200) {
             *pk21_ptr = NOP;
         };
@@ -147,15 +137,7 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
     }
 
     u8 kipHash[0x20];
-    char *patchFilter[] = { "nosigchk", "nocmac", "nogc", NULL };
-
-    // enable nogc if there's a file called "nogc" in /ReiNX/ 
-    //(I expect the 1% of people this effects can read the guide)
-    if (!fopen("/ReiNX/nogc", "rb")) {
-        patchFilter[2] = NULL;
-        fclose();
-    }
-
+    
     //Patch FS module (truly not my proudest code TODO cleanup)
     LIST_FOREACH_ENTRY(pkg2_kip1_info_t, ki, kips, link) {        
         //Patch FS
@@ -180,12 +162,8 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
                     if (!pset) {
                       print("  could not find patchset with matching hash\n");
                     } else {
-                      int res = kippatch_apply_set(kipDecompText, moddedKip->sections[i].size_decomp, pset, patchFilter);
-                      if (res) {
-                          gfx_con_setcol(&gfx_con, RED, 0, 0);
-                          print("Error: kippatch_apply_set() returned %d\n", res);
-                          gfx_con_setcol(&gfx_con, ORANGE, 0, 0);
-                      }
+                      int res = kippatch_apply_set(kipDecompText, moddedKip->sections[i].size_decomp, pset);
+                      if (res) error("kippatch_apply_set() failed\n");
                     }
 
                     moddedKip->flags &= ~1;
@@ -255,6 +233,7 @@ int keygen(u8 *keyblob, u32 fwVer, void *tsec_fw) {
         break;
 
         case KB_FIRMWARE_VERSION_500:
+        case KB_FIRMWARE_VERSION_600:
         default:
             se_aes_unwrap_key(0x0A, 0x0F, console_keyseed_4xx);
             se_aes_unwrap_key(0x0F, 0x0F, console_keyseed);
@@ -271,15 +250,13 @@ int keygen(u8 *keyblob, u32 fwVer, void *tsec_fw) {
 u8 loadFirm() {
     sdmmc_storage_t storage;
     sdmmc_t sdmmc;
-    u32 ret = 0;
 
+    //Init nand
     sdmmc_storage_init_mmc(&storage, &sdmmc, SDMMC_4, SDMMC_BUS_WIDTH_8, 4);
     sdmmc_storage_set_mmc_partition(&storage, 1);
 
     // Read package1.
-    print("Reading Package1...\n");
-    u8 *package1 = (u8 *)malloc(0x40000);
-    sdmmc_storage_read(&storage, 0x100000 / NX_EMMC_BLOCKSIZE, 0x40000 / NX_EMMC_BLOCKSIZE, package1);
+    u8 *package1 = ReadPackage1(&storage);
 
     // Setup firmware specific data.
     pk11Offs = pkg11_offsentify(package1);
@@ -297,33 +274,8 @@ u8 loadFirm() {
     PMC(APBDEV_PMC_SCRATCH1) = pk11Offs->warmboot_base;
     free(package1);
 
-    // Read GPT partition.
-    LIST_INIT(gpt);
-    sdmmc_storage_set_mmc_partition(&storage, 0);
-    print("Parsing GPT...\n");
-    nx_emmc_gpt_parse(&gpt, &storage);
-    emmc_part_t *pkg2_part = nx_emmc_part_find(&gpt, "BCPKG2-1-Normal-Main");
-    nx_emmc_gpt_free(&gpt);
-    if (!pkg2_part) {
-        error("Failed to read GPT!\n");
-        return 1;
-    }
-
-    // Read Package2.
-    u8 *tmp = (u8 *)malloc(NX_EMMC_BLOCKSIZE);
-    print("Reading Package2 size...\n");
-    nx_emmc_part_read(&storage, pkg2_part, 0x4000 / NX_EMMC_BLOCKSIZE, 1, tmp);
-    u32 *hdr = (u32 *)(tmp + 0x100);
-    u32 pkg2_size = hdr[0] ^ hdr[2] ^ hdr[3];
-    free(tmp);
-    u8 *pkg2 = malloc(ALIGN(pkg2_size, NX_EMMC_BLOCKSIZE));
-    print("Reading Package2...\n");
-    ret = nx_emmc_part_read(&storage, pkg2_part, 0x4000 / NX_EMMC_BLOCKSIZE, ALIGN(pkg2_size, NX_EMMC_BLOCKSIZE) / NX_EMMC_BLOCKSIZE, pkg2);
-    sdmmc_storage_end(&storage);
-    if (!ret) {
-        error("Failed to read Package2!\n");
-        return 1;
-    }
+    //Read package2
+    u8 *pkg2 = ReadPackage2(&storage);
 
     // Unpack Package2.
     print("Unpacking package2...\n");
@@ -339,7 +291,7 @@ u8 loadFirm() {
     char **sysmods = NULL;
     size_t cnt = enumerateDir(&sysmods, "/ReiNX/sysmodules", "*.kip");
     for (u32 i = 0; i < cnt ; i++) {
-        print("%kLoading %s\n%k", YELLOW, sysmods[i], ORANGE);
+        print("%kLoading %s\n%k", YELLOW, sysmods[i], DEFAULT_TEXT_COL);
         loadKip(&kip1_info, sysmods[i]);
         free(sysmods[i]);
     }
@@ -347,6 +299,19 @@ u8 loadFirm() {
 
     // Build Package2.
     buildFirmwarePackage(dec_pkg2->data, dec_pkg2->sec_size[PKG2_SEC_KERNEL], &kip1_info);
+}
+
+static void SE_lock() {
+    for (u32 i = 0; i < 16; i++)
+        se_key_acc_ctrl(i, 0x15);
+
+    for (u32 i = 0; i < 2; i++)
+        se_rsa_acc_ctrl(i, 1);
+
+    SE(0x4) = 0; // Make this reg secure only.
+    SE(SE_KEY_TABLE_ACCESS_LOCK_OFFSET) = 0; // Make all key access regs secure only.
+    SE(SE_RSA_KEYTABLE_ACCESS_LOCK_OFFSET) = 0; // Make all rsa access regs secure only.
+    SE(SE_SECURITY_0) &= 0xFFFFFFFB; // Make access lock regs secure only.
 }
 
 void launch() {
@@ -396,7 +361,7 @@ void firmware() {
     gfx_init_ctxt(&gfx_ctxt, display_init_framebuffer(), 720, 1280, 768);
     gfx_clear_color(&gfx_ctxt, 0xFF000000);
     gfx_con_init(&gfx_con, &gfx_ctxt);
-    gfx_con_setcol(&gfx_con, ORANGE, 0, 0);
+    gfx_con_setcol(&gfx_con, DEFAULT_TEXT_COL, 0, 0);
 
     while (!sdMount()) {
         error("Failed to init SD card!\n");
@@ -406,16 +371,18 @@ void firmware() {
         btn_wait();
     }
     
-    if(PMC(APBDEV_PMC_SCRATCH49_0) != 69 && fopen("/ReiNX.bin", "rb")) {
+    if(PMC(APBDEV_PMC_SCRATCH49) != 69 && fopen("/ReiNX.bin", "rb")) {
         fread((void*)PAYLOAD_ADDR, fsize(), 1);
         fclose();
         sdUnmount();
         display_end();
         CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_V) |= 0x400; // Enable AHUB clock.
         CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_Y) |= 0x40;  // Enable APE clock.
-        PMC(APBDEV_PMC_SCRATCH49_0) = 69;
+        PMC(APBDEV_PMC_SCRATCH49) = 69;
         ((void (*)())PAYLOAD_ADDR)();
     }
+    SYSREG(AHB_AHB_SPARE_REG) = (volatile vu32)0xFFFFFF9F;
+	PMC(APBDEV_PMC_SCRATCH49) = 0;
     
     print("Welcome to ReiNX %s!\n", VERSION);
     loadFirm();

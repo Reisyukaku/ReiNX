@@ -35,6 +35,7 @@ void musleep(u32 milliseconds);
 void usleep(u32 microseconds);
 void exec_cfg(u32 *base, const cfg_op_t *ops, u32 num_ops);
 uPtr memsearch(const u8 *startPos, u32 searchSize, const void *pattern, u32 patternSize);
+uPtr getFreeSpace(void *start, size_t space, size_t searchSize);
 u32 crc32c(const void *buf, u32 len);
 
 #endif

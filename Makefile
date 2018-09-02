@@ -9,6 +9,7 @@ LD = $(DEVKITARM)/bin/arm-none-eabi-ld
 OBJCOPY = $(DEVKITARM)/bin/arm-none-eabi-objcopy
 
 name := ReiNX
+ver  := 1.6
 
 dir_source := src
 dir_data := data
@@ -17,7 +18,7 @@ dir_out := out
 dir_sysmod := NX_Sysmodules
 
 ARCH := -march=armv4t -mtune=arm7tdmi -mthumb -mthumb-interwork
-CFLAGS = $(ARCH) -Os -nostdlib -ffunction-sections -fdata-sections -fomit-frame-pointer -fno-inline -fno-builtin -std=gnu11# -Wall
+CFLAGS = $(ARCH) -DVERSION='"$(ver)"' -Os -nostdlib -ffunction-sections -fdata-sections -fomit-frame-pointer -fno-inline -fno-builtin -std=gnu11# -Wall
 LDFLAGS = $(ARCH) -nostartfiles -lgcc -Wl,--nmagic,--gc-sections
 
 objects =	$(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \

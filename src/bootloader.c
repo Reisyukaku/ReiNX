@@ -15,13 +15,37 @@
 */
 
 #include "hwinit.h"
-#include "fuse.h"
 #include "error.h"
 #include "bootloader.h"
 
 void check_sku() {
     if (FUSE(FUSE_SKU) != 0x83)
         panic();
+}
+
+u32 get_unknown_config() {
+    u32 res = 0;
+    u32 deviceInfo = FUSE(FUSE_RESERVED_ODMX(4));
+    u32 config = ((deviceInfo & 4u) >> 2) | 2 * ((deviceInfo & 0x100u) >> 8);
+    
+    if(config == 1)
+        return 0;
+    if(config == 2)
+        return 1;
+    if(config || (res = FUSE(FUSE_SPARE_BIT_5)) != 0)
+        res = 3;
+    return res;
+}
+
+u32 get_unit_type() {
+    u32 deviceInfo = FUSE(FUSE_RESERVED_ODMX(4));
+    u32 deviceType = deviceInfo & 3 | 4 * ((deviceInfo & 0x200u) >> 9);
+    
+    if(deviceType == 3)
+        return 0;
+    if(deviceType == 4)
+        return 1;
+    return 2;
 }
 
 void check_config_fuses() {
