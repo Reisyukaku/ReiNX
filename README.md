@@ -15,6 +15,7 @@ To compile with Docker, `chmod +x docker-build.sh` and run the shell script `./d
 
 
 **Features:**
+* Modularity (doesnt rely on or require any SD files to run; customize SD files to your liking)
 
 * Loads all KIPs from `/ReiNX/sysmodules/` directory
 
@@ -22,7 +23,9 @@ To compile with Docker, `chmod +x docker-build.sh` and run the shell script `./d
 
 * FS patches on the fly (NCA verify/cmac and optional nogc)
 
-* Exclusive ReiNX sysmodules with built in ES patches
+* Exclusive ReiNX sysmodules
+
+* ES patch in RXP patch format (used with custom loader.kip)
 
 **Official thread:**
 
