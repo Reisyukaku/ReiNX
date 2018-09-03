@@ -56,9 +56,9 @@ void exec_cfg(u32 *base, const cfg_op_t *ops, u32 num_ops)
 		base[ops[i].off] = ops[i].val;
 }
 
-uPtr memsearch(const u8 *startPos, u32 searchSize, const void *pattern, u32 patternSize) {
+uPtr memsearch(void *startPos, size_t searchSize, void *pattern, size_t patternSize) {
     if(!searchSize) return 0;
-    for (u8 *pos = (u8 *)startPos; pos <= startPos + searchSize - patternSize; pos++) {
+    for (u8 *pos = (u8*)startPos; pos <= (u8*)startPos + searchSize - patternSize; pos++) {
         if (memcmp(pos, pattern, patternSize) == 0) return (uPtr)pos;
     }
     return 0;
@@ -70,7 +70,7 @@ uPtr getFreeSpace(void *start, size_t space, size_t searchSize) {
         if(*(u8*)(start+i) == 0) {
             for(int j=0;j<space;j++) {
                 if(*(u8*)(start+i+j) != 0) break;
-                if(j==space-1) return (uintptr_t)(start+i);
+                if(j==space-1) return (uPtr)(start+i);
             }
         }
     }
