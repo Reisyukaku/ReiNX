@@ -15,7 +15,7 @@ To compile with Docker, `chmod +x docker-build.sh` and run the shell script `./d
 
 
 **Features:**
-* Modularity (doesnt rely on or require any SD files to run; customize SD files to your liking)
+* Modularity (doesn't rely on or require any SD files to run; customize SD files to your liking)
 
 * Loads all KIPs from `/ReiNX/sysmodules/` directory
 
