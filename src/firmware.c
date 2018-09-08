@@ -25,13 +25,14 @@
 
 static pk11_offs *pk11Offs = NULL;
 
-void drawSplash() {
+int drawSplash() {
     // Draw splashscreen to framebuffer.
     if(fopen("/ReiNX/splash.bin", "rb") != 0) {
         fread((void*)0xC0000000, fsize(), 1);
         fclose();
-        usleep(3000000);
+        return 1;
     }
+    return 0;
 }
 
 pk11_offs *pkg11_offsentify(u8 *pkg1) {
@@ -309,7 +310,7 @@ void firmware() {
             i2c_send_byte(I2C_5, 0x3C, MAX77620_REG_ONOFFCNFG1, MAX77620_ONOFFCNFG1_PWR_OFF);
         btn_wait();
     }
-    
+
     if(PMC(APBDEV_PMC_SCRATCH49) != 69 && fopen("/ReiNX.bin", "rb")) {
         fread((void*)PAYLOAD_ADDR, fsize(), 1);
         fclose();
@@ -322,9 +323,14 @@ void firmware() {
     }
     SYSREG(AHB_AHB_SPARE_REG) = (volatile vu32)0xFFFFFF9F;
 	PMC(APBDEV_PMC_SCRATCH49) = 0;
-    
+
+    if (btn_read() & BTN_VOL_DOWN) {
+        print("Booting verbosely\n");
+    } else if (drawSplash()) {
+        gfx_con.mute = 1;
+    }
+
     print("Welcome to ReiNX %s!\n", VERSION);
     loadFirm();
-    drawSplash();
     launch();
 }

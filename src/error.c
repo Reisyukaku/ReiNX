@@ -30,6 +30,7 @@ void panic() {
 }
 
 void error(char *errStr) {
+    gfx_con.mute = 0;
     gfx_con_setcol(&gfx_con, RED, 0, 0);
     print("Error: %s", errStr);
     gfx_con_setcol(&gfx_con, DEFAULT_TEXT_COL, 0, 0);
