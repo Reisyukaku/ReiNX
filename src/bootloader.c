@@ -57,6 +57,68 @@ void check_config_fuses() {
         panic();
 }
 
+int keygen(u8 *keyblob, u32 fwVer, void *tsec_fw) {
+    u8 tmp[0x10];
+
+    se_key_acc_ctrl(0x0D, 0x15);
+    se_key_acc_ctrl(0x0E, 0x15);
+
+    // Get TSEC key.
+    if (tsec_query(tmp, 1, tsec_fw) < 0)
+        return 0;
+
+    se_aes_key_set(0x0D, tmp, 0x10);
+
+    // Derive keyblob keys from TSEC+SBK.
+    se_aes_crypt_block_ecb(0x0D, 0x00, tmp, keyblob_keyseeds[0]);
+    se_aes_unwrap_key(0x0F, 0x0E, tmp);
+    se_aes_crypt_block_ecb(0xD, 0x00, tmp, keyblob_keyseeds[fwVer]);
+    se_aes_unwrap_key(0x0D, 0x0E, tmp);
+
+    // Clear SBK
+    se_aes_key_clear(0x0E);
+
+    se_aes_crypt_block_ecb(0x0D, 0, tmp, cmac_keyseed);
+    se_aes_unwrap_key(0x0B, 0x0D, cmac_keyseed);
+
+    // Decrypt keyblob and set keyslots.
+    se_aes_crypt_ctr(0x0D, keyblob + 0x20, 0x90, keyblob + 0x20, 0x90, keyblob + 0x10);
+    se_aes_key_set(0x0B, keyblob + 0x20 + 0x80, 0x10); // Package1 key
+    se_aes_key_set(0x0C, keyblob + 0x20, 0x10);
+    se_aes_key_set(0x0D, keyblob + 0x20, 0x10);
+
+    se_aes_crypt_block_ecb(0x0C, 0, tmp, master_keyseed_retail);
+
+    switch (fwVer) {
+        case KB_FIRMWARE_VERSION_100_200:
+        case KB_FIRMWARE_VERSION_300:
+        case KB_FIRMWARE_VERSION_301:
+            se_aes_unwrap_key(0x0D, 0x0F, console_keyseed);
+            se_aes_unwrap_key(0x0C, 0x0C, master_keyseed_retail);
+        break;
+
+        case KB_FIRMWARE_VERSION_400:
+            se_aes_unwrap_key(0x0D, 0x0F, console_keyseed_4xx);
+            se_aes_unwrap_key(0x0F, 0x0F, console_keyseed);
+            se_aes_unwrap_key(0x0E, 0x0C, master_keyseed_4xx);
+            se_aes_unwrap_key(0x0C, 0x0C, master_keyseed_retail);
+        break;
+
+        case KB_FIRMWARE_VERSION_500:
+        case KB_FIRMWARE_VERSION_600:
+        default:
+            se_aes_unwrap_key(0x0A, 0x0F, console_keyseed_4xx);
+            se_aes_unwrap_key(0x0F, 0x0F, console_keyseed);
+            se_aes_unwrap_key(0x0E, 0x0C, master_keyseed_4xx);
+            se_aes_unwrap_key(0x0C, 0x0C, master_keyseed_retail);
+        break;
+    }
+
+    // Package2 key
+    se_key_acc_ctrl(0x08, 0x15);
+    se_aes_unwrap_key(0x08, 0x0C, key8_keyseed);
+}
+
 void mbist_workaround() {
     CLOCK(0x410) = (CLOCK(0x410) | 0x8000) & 0xFFFFBFFF;
     CLOCK(0xD0) |= 0x40800000u;
