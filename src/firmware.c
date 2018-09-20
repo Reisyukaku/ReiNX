@@ -303,9 +303,9 @@ void firmware() {
     gfx_con_init(&gfx_con, &gfx_ctxt);
     gfx_con_setcol(&gfx_con, DEFAULT_TEXT_COL, 0, 0);
 
-    while (!sdMount()) {
+    if (!sdMount()) {
         error("Failed to init SD card!\n");
-        print("Press POWER to power off, any other key to retry\n");
+        print("Press POWER to power off, or any other key to continue without SD.\n");
         if (btn_wait() & BTN_POWER)
             i2c_send_byte(I2C_5, 0x3C, MAX77620_REG_ONOFFCNFG1, MAX77620_ONOFFCNFG1_PWR_OFF);
         btn_wait();
