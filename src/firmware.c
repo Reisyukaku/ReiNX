@@ -121,21 +121,99 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
     //Patch Kernel
     if(!customKern) {
         u32 crc = crc32c(pkg2->data, pkg2->sec_size[PKG2_SEC_KERNEL]);
-		const pkg2_kernel_id_t * id = pkg2_identify(crc);
-		
-		kernel_patch_t * kpatch = id->kernel_patchset;
-		if(kpatch!=NULL) {
-			for(int i=0; kpatch[i].id!=-1; i++) {
-				if(kpatch[i].id != ATM_ARR_PATCH)
-					*(vu32 *)(pkg2->data + kpatch[i].off) = kpatch[i].val;
-				else {
-					u32 * temp = (u32 *)kpatch[i].ptr;
-					for(int j=0; j< kpatch[i].val; j++) {
-						*(vu32*)(pkg2->data + kpatch[i].off + j*4) = temp[j];
-					}
-				}
-			}
-		}
+        uPtr kern = (uPtr)&pkg2->data;
+        uPtr sendOff, recvOff, codeRcvOff, codeSndOff, svcVerifOff, svcDebugOff;
+        switch(crc){
+            case 0x427f2647:{
+                svcVerifOff = 0x3764C;
+                svcDebugOff = 0x44074;
+                sendOff = 0x23CC0;
+                recvOff = 0x219F0;
+                codeSndOff = 4;
+                codeRcvOff = 4;
+                break;
+            }
+            case 0xae19cf1b:{
+                svcVerifOff = 0x54834;
+                svcDebugOff = 0x6086C;
+                sendOff = 0x3F134;
+                recvOff = 0x3D1A8;
+                codeSndOff = 4;
+                codeRcvOff = 4;
+                break;
+            }
+            case 0x73c9e274:{
+                svcVerifOff = 0x3BD24;
+                svcDebugOff = 0x483FC;
+                sendOff = 0x26080;
+                recvOff = 0x240F0;
+                codeSndOff = 4;
+                codeRcvOff = 4;
+                break;
+            }
+            case 0xe0e8cdc4:{
+                svcVerifOff = 0x3BD24;
+                svcDebugOff = 0x48414;
+                sendOff = 0x26080;
+                recvOff = 0x240F0;
+                codeSndOff = 4;
+                codeRcvOff = 4;
+                break;
+            }
+            case 0x485d0157:{
+                svcVerifOff = 0x41EB4;
+                svcDebugOff = 0x4EBFC;
+                sendOff = 0x2AF64;
+                recvOff = 0x28F6C;
+                codeSndOff = 8;
+                codeRcvOff = 4;
+                break;
+            }
+            case 0xf3c363f2:{
+                svcVerifOff = 0x45E6C;
+                svcDebugOff = 0x5513C;
+                sendOff = 0x2AD34;
+                recvOff = 0x28DAC;
+                codeSndOff = 8;
+                codeRcvOff = 8;
+                break;
+            }
+            case 0x64ce1a44:{
+                svcVerifOff = 0x47EA0;
+                svcDebugOff = 0x57548;
+                sendOff = 0x2BB8C;
+                recvOff = 0x29B6C;
+                codeSndOff = 0x10;
+                codeRcvOff = 0x10;
+                break;
+            }
+            default:
+                error("Kernel not supported");
+                goto end;
+        }
+        
+        //ID Send
+		uPtr freeSpace = getFreeSpace((void*)pkg2->data, 0x200, pkg2->sec_size[PKG2_SEC_KERNEL]);      //Find area to write payload
+        size_t payloadSize = sizeof(PRC_ID_SND_600);
+        *(vu32*)(kern + sendOff) = _B(sendOff, freeSpace);                                             //write hook to payload
+        memcpy((void*)(kern + freeSpace), (void*)PRC_ID_SND_600, payloadSize);                         //Copy payload to free space
+        *(vu32*)(kern + freeSpace + payloadSize) = _B(freeSpace + payloadSize, sendOff + codeSndOff);  //Jump back skipping the hook
+        
+        //ID Receive
+        freeSpace += (payloadSize+4);
+        payloadSize = sizeof(PRC_ID_RCV_600);
+        *(vu32*)(kern + recvOff) = _B(recvOff, freeSpace);
+        memcpy((void*)(kern + freeSpace), (void*)PRC_ID_RCV_600, payloadSize);
+        *(vu32*)(kern + freeSpace + payloadSize) = _B(freeSpace + payloadSize, recvOff + codeRcvOff);
+        
+        //SVC patches
+        *(vu32*)(kern + svcVerifOff) = NOP;
+        if (fopen("/ReiNX/debug", "rb")) {
+            fclose();
+            *(vu32*)(kern + svcDebugOff) = _MOVZX(8, 1, 0);
+        }
+        
+        end:;
     }
 
     u8 kipHash[0x20];

@@ -23,6 +23,8 @@ To compile with Docker, `chmod +x docker-build.sh` and run the shell script `./d
 
 * FS patches on the fly (NCA verify/cmac and optional nogc)
 
+* Kernel patches on the fly (optional debug mode)
+
 * Exclusive ReiNX sysmodules
 
 * ES patch in RXP patch format (used with custom loader.kip)

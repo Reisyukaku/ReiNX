@@ -70,7 +70,7 @@ uPtr getFreeSpace(void *start, size_t space, size_t searchSize) {
         if(*(u8*)(start+i) == 0) {
             for(int j=0;j<space;j++) {
                 if(*(u8*)(start+i+j) != 0) break;
-                if(j==space-1) return (uPtr)(start+i);
+                if(j==space-1) return (uPtr)i;
             }
         }
     }
