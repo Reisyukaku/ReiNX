@@ -264,23 +264,92 @@ int kippatch_apply(u8 *kipdata, u64 kipdata_len, kippatch_t *patch) {
     return 0;
 }
 
+u32 *getSndPayload(u32 id, size_t *size) {
+    u32 *ret;
+    switch(id){
+        case 0:
+            *size = sizeof(PRC_ID_SND_100);
+            ret = PRC_ID_SND_100;
+            break;
+        case 1:
+            *size = sizeof(PRC_ID_SND_200);
+            ret = PRC_ID_SND_200;
+            break;
+        case 2:
+            *size = sizeof(PRC_ID_SND_300);
+            ret = PRC_ID_SND_300;
+            break;
+        case 3:
+            *size = sizeof(PRC_ID_SND_302);
+            ret = PRC_ID_SND_302;
+            break;
+        case 4:
+            *size = sizeof(PRC_ID_SND_400);
+            ret = PRC_ID_SND_400;
+            break;
+        case 5:
+            *size = sizeof(PRC_ID_SND_500);
+            ret = PRC_ID_SND_500;
+            break;
+        case 6:
+            *size = sizeof(PRC_ID_SND_600);
+            ret = PRC_ID_SND_600;
+            break;
+    }
+    return ret;
+}
+
+u32 *getRcvPayload(u32 id, size_t *size) {
+    u32 *ret;
+    switch(id){
+        case 0:
+            *size = sizeof(PRC_ID_RCV_100);
+            ret = PRC_ID_RCV_100;
+            break;
+        case 1:
+            *size = sizeof(PRC_ID_RCV_200);
+            ret = PRC_ID_RCV_200;
+            break;
+        case 2:
+            *size = sizeof(PRC_ID_RCV_300);
+            ret = PRC_ID_RCV_300;
+            break;
+        case 3:
+            *size = sizeof(PRC_ID_RCV_302);
+            ret = PRC_ID_RCV_302;
+            break;
+        case 4:
+            *size = sizeof(PRC_ID_RCV_400);
+            ret = PRC_ID_RCV_400;
+            break;
+        case 5:
+            *size = sizeof(PRC_ID_RCV_500);
+            ret = PRC_ID_RCV_500;
+            break;
+        case 6:
+            *size = sizeof(PRC_ID_RCV_600);
+            ret = PRC_ID_RCV_600;
+            break;
+    }
+    return ret;
+}
 
 int nca_patch(u8 * kipdata, u64 kipdata_len) {
-	char pattern[8] = {0xE5, 0x07, 0x00, 0x32, 0xE0, 0x03, 0x16, 0xAA};
-	char buf[0x10];
-	memcpy(buf, kipdata+0x1C450, 0x10);
-	u32 * addr = memsearch(kipdata, kipdata_len, pattern, sizeof(pattern));
-	int ret=0;
-	int max_dist = 0x10;
-	for(int i=0; i<max_dist; i++) {
-		u32 op = addr[i];
-		if((op & 0xFC000000)==0x94000000) { //is a BL op
-			addr[i] = NOP;
-			ret=1;
-			break;
-		}
-	}
-	return ret;
+    char pattern[8] = {0xE5, 0x07, 0x00, 0x32, 0xE0, 0x03, 0x16, 0xAA};
+    char buf[0x10];
+    memcpy(buf, kipdata+0x1C450, 0x10);
+    u32 * addr = memsearch(kipdata, kipdata_len, pattern, sizeof(pattern));
+    int ret=0;
+    int max_dist = 0x10;
+    for(int i=0; i<max_dist; i++) {
+        u32 op = addr[i];
+        if((op & 0xFC000000)==0x94000000) { //is a BL op
+            addr[i] = NOP;
+            ret=1;
+            break;
+        }
+    }
+    return ret;
 }
 
 int kippatch_apply_set(u8 *kipdata, u64 kipdata_len, kippatchset_t *patchset) {
@@ -305,8 +374,8 @@ int kippatch_apply_set(u8 *kipdata, u64 kipdata_len, kippatchset_t *patchset) {
         int r = kippatch_apply(kipdata, kipdata_len, p);
         if (r) return r;
     }
-	if(!strncmp("FS", patchset->kip_name, 2))
-		nca_patch(kipdata, kipdata_len);
+    if(!strncmp("FS", patchset->kip_name, 2))
+        nca_patch(kipdata, kipdata_len);
     return 0;
 }
 

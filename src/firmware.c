@@ -122,69 +122,76 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
     if(!customKern) {
         u32 crc = crc32c(pkg2->data, pkg2->sec_size[PKG2_SEC_KERNEL]);
         uPtr kern = (uPtr)&pkg2->data;
-        uPtr sendOff, recvOff, codeRcvOff, codeSndOff, svcVerifOff, svcDebugOff;
+        uPtr sendOff, recvOff, codeRcvOff, codeSndOff, svcVerifOff, svcDebugOff, ver;
         switch(crc){
-            case 0x427f2647:{
+            case 0x427f2647:{   //1.0.0
                 svcVerifOff = 0x3764C;
                 svcDebugOff = 0x44074;
                 sendOff = 0x23CC0;
                 recvOff = 0x219F0;
                 codeSndOff = 4;
                 codeRcvOff = 4;
+                ver = 0;
                 break;
             }
-            case 0xae19cf1b:{
+            case 0xae19cf1b:{   //2.0.0
                 svcVerifOff = 0x54834;
                 svcDebugOff = 0x6086C;
                 sendOff = 0x3F134;
                 recvOff = 0x3D1A8;
                 codeSndOff = 4;
                 codeRcvOff = 4;
+                ver = 1;
                 break;
             }
-            case 0x73c9e274:{
+            case 0x73c9e274:{   //3.0.0
                 svcVerifOff = 0x3BD24;
                 svcDebugOff = 0x483FC;
                 sendOff = 0x26080;
                 recvOff = 0x240F0;
                 codeSndOff = 4;
                 codeRcvOff = 4;
+                ver = 2;
                 break;
             }
-            case 0xe0e8cdc4:{
+            case 0xe0e8cdc4:{   //3.0.2
                 svcVerifOff = 0x3BD24;
                 svcDebugOff = 0x48414;
                 sendOff = 0x26080;
                 recvOff = 0x240F0;
                 codeSndOff = 4;
                 codeRcvOff = 4;
+                ver = 3;
                 break;
             }
-            case 0x485d0157:{
+            case 0x485d0157:{   //4.0.0
                 svcVerifOff = 0x41EB4;
                 svcDebugOff = 0x4EBFC;
                 sendOff = 0x2AF64;
                 recvOff = 0x28F6C;
                 codeSndOff = 8;
                 codeRcvOff = 4;
+                ver = 4;
                 break;
             }
-            case 0xf3c363f2:{
+            case 0xf3c363f2:{   //5.0.0
                 svcVerifOff = 0x45E6C;
                 svcDebugOff = 0x5513C;
                 sendOff = 0x2AD34;
                 recvOff = 0x28DAC;
                 codeSndOff = 8;
                 codeRcvOff = 8;
+                ver = 5;
                 break;
             }
-            case 0x64ce1a44:{
+            case 0x64ce1a44:{   //6.0.0
                 svcVerifOff = 0x47EA0;
                 svcDebugOff = 0x57548;
                 sendOff = 0x2BB8C;
                 recvOff = 0x29B6C;
                 codeSndOff = 0x10;
                 codeRcvOff = 0x10;
+                ver = 6;
                 break;
             }
             default:
@@ -193,17 +200,19 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
         }
         
         //ID Send
-		uPtr freeSpace = getFreeSpace((void*)pkg2->data, 0x200, pkg2->sec_size[PKG2_SEC_KERNEL]);      //Find area to write payload
-        size_t payloadSize = sizeof(PRC_ID_SND_600);
+        uPtr freeSpace = getFreeSpace((void*)(kern+0x45000), 0x200, 0x20000) + 0x45000;      //Find area to write payload
+        print("Kernel Freespace: 0x%08X\n", freeSpace);
+        size_t payloadSize;
+        u32 *sndPayload = getSndPayload(ver, &payloadSize);
         *(vu32*)(kern + sendOff) = _B(sendOff, freeSpace);                                             //write hook to payload
-        memcpy((void*)(kern + freeSpace), (void*)PRC_ID_SND_600, payloadSize);                         //Copy payload to free space
+        memcpy((void*)(kern + freeSpace), sndPayload, payloadSize);                             //Copy payload to free space
         *(vu32*)(kern + freeSpace + payloadSize) = _B(freeSpace + payloadSize, sendOff + codeSndOff);  //Jump back skipping the hook
         
         //ID Receive
         freeSpace += (payloadSize+4);
-        payloadSize = sizeof(PRC_ID_RCV_600);
+        u32 *rcvPayload = getRcvPayload(ver, &payloadSize);
         *(vu32*)(kern + recvOff) = _B(recvOff, freeSpace);
-        memcpy((void*)(kern + freeSpace), (void*)PRC_ID_RCV_600, payloadSize);
+        memcpy((void*)(kern + freeSpace), rcvPayload, payloadSize);
         *(vu32*)(kern + freeSpace + payloadSize) = _B(freeSpace + payloadSize, recvOff + codeRcvOff);
         
         //SVC patches
@@ -400,7 +409,7 @@ void firmware() {
         ((void (*)())PAYLOAD_ADDR)();
     }
     SYSREG(AHB_AHB_SPARE_REG) = (volatile vu32)0xFFFFFF9F;
-	PMC(APBDEV_PMC_SCRATCH49) = 0;
+    PMC(APBDEV_PMC_SCRATCH49) = 0;
 
     if (btn_read() & BTN_VOL_DOWN) {
         print("Booting verbosely\n");
