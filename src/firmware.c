@@ -279,7 +279,7 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
     
     pkg2_kip1_info_t* FS_module = find_by_tid(kips, 0x0100000000000000);
     if(FS_module == NULL) {
-        error("Could't find FS Module.\n");
+        error("Could not find FS Module.\n");
     } else {
         patchFS(FS_module);
     }
