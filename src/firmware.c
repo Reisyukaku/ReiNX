@@ -52,30 +52,31 @@ void patchFS(pkg2_kip1_info_t* ki) {
 
     //Create header
     size_t sizeDiff = ki->kip1->sections[0].size_decomp - ki->kip1->sections[0].size_comp;
+
     size_t newSize = ki->size + sizeDiff;
     pkg2_kip1_t *moddedKip = malloc(newSize);
     memcpy(moddedKip, ki->kip1, newSize);
+
     u32 pos = 0;
+    //Get decomp .text segment
+    u8 *kipDecompText = blz_decompress(moddedKip->data, moddedKip->sections[0].size_comp);
+
+    kippatchset_t *pset = kippatch_find_set(kipHash, kip_patches);
+    if (!pset) {
+      print("  could not find patchset with matching hash\n");
+    } else {
+      int res = kippatch_apply_set(kipDecompText, moddedKip->sections[0].size_decomp, pset);
+      if (res) error("kippatch_apply_set() failed\n");
+    }
+
+    moddedKip->flags &= ~1;
+    memcpy((void*)moddedKip->data, kipDecompText, moddedKip->sections[0].size_decomp);
+    free(kipDecompText);
+    pos += moddedKip->sections[0].size_comp;
+    moddedKip->sections[0].size_comp = moddedKip->sections[0].size_decomp;
+
     for(int i = 0; i < KIP1_NUM_SECTIONS; i++) {
-        if(!i) {
-            //Get decomp .text segment
-            u8 *kipDecompText = blz_decompress(moddedKip->data, moddedKip->sections[i].size_comp);
-
-            kippatchset_t *pset = kippatch_find_set(kipHash, kip_patches);
-            if (!pset) {
-              print("  could not find patchset with matching hash\n");
-            } else {
-              int res = kippatch_apply_set(kipDecompText, moddedKip->sections[i].size_decomp, pset);
-              if (res) error("kippatch_apply_set() failed\n");
-            }
-
-            moddedKip->flags &= ~1;
-            memcpy((void*)moddedKip->data, kipDecompText, moddedKip->sections[i].size_decomp);
-            free(kipDecompText);
-            pos += moddedKip->sections[i].size_comp;
-            moddedKip->sections[i].size_comp = moddedKip->sections[i].size_decomp;
-        } else {
-            if(moddedKip->sections[i].offset == 0) continue;
+        if(moddedKip->sections[i].offset != 0) {
             memcpy((void*)moddedKip->data + pos + sizeDiff, (void*)ki->kip1->data + pos, moddedKip->sections[i].size_comp);
             pos += moddedKip->sections[i].size_comp;
         }
