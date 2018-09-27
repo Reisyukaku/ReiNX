@@ -75,7 +75,7 @@ void patchFS(pkg2_kip1_info_t* ki) {
     pos += moddedKip->sections[0].size_comp;
     moddedKip->sections[0].size_comp = moddedKip->sections[0].size_decomp;
 
-    for(int i = 0; i < KIP1_NUM_SECTIONS; i++) {
+    for(int i = 1; i < KIP1_NUM_SECTIONS; i++) {
         if(moddedKip->sections[i].offset != 0) {
             memcpy((void*)moddedKip->data + pos + sizeDiff, (void*)ki->kip1->data + pos, moddedKip->sections[i].size_comp);
             pos += moddedKip->sections[i].size_comp;
