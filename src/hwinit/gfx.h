@@ -26,6 +26,7 @@
 #define YELLOW 0xFF00FFFF
 #define ORANGE 0xFF3891FF
 #define WHITE 0xFFFFFFFF
+#define BLACK 0xFF000000
 
 typedef struct _gfx_ctxt_t
 {
