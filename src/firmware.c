@@ -22,6 +22,7 @@
 #include "error.h"
 #include "bootloader.h"
 #include "firmware.h"
+#include "reinx_menu.h"
 
 static pk11_offs *pk11Offs = NULL;
 
@@ -398,7 +399,7 @@ void launch() {
 void firmware() {
     display_init();
     gfx_init_ctxt(&gfx_ctxt, display_init_framebuffer(), 720, 1280, 768);
-    gfx_clear_color(&gfx_ctxt, 0xFF000000);
+    gfx_clear_color(&gfx_ctxt, BLACK);
     gfx_con_init(&gfx_con, &gfx_ctxt);
     gfx_con_setcol(&gfx_con, DEFAULT_TEXT_COL, 0, 0);
 
@@ -424,7 +425,9 @@ void firmware() {
     PMC(APBDEV_PMC_SCRATCH49) = 0;
 
     if (btn_read() & BTN_VOL_DOWN) {
-        print("Booting verbosely\n");
+		print("Running in verbose mode!\n");
+    } else if (btn_read() & BTN_VOL_UP) {
+        init_reinx_menu();
     } else if (drawSplash()) {
         gfx_con.mute = 1;
     }
