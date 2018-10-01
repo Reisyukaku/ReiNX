@@ -14,14 +14,21 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef _REINX_MENU_H_
-#define _REINX_MENU_H_
+#ifndef _MENU_POOL_H_
+#define _MENU_POOL_H_
 
-#include "menu/menu.h"
-#include "menu/menu_entry.h"
-#include "menu/menu_tools.h"
-#include "menu/menu_pool.h"
+#include "menu.h"
 
-void init_reinx_menu(void);
+typedef struct {
+    int max_items;
+    int current_items;
+    menu_t** menus;
+} menu_pool_t;
+
+menu_pool_t* menu_pool;
+
+void pool_init();
+void push_to_pool(menu_t * menu);
+void pool_cleanup();
 
 #endif

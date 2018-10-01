@@ -1,4 +1,22 @@
+/*  
+ * Copyright (c) 2018 Guillem96
+ *
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include "menu.h"
+#include "menu_pool.h"
 
 menu_t *menu_create(const char *title)
 {
@@ -6,6 +24,7 @@ menu_t *menu_create(const char *title)
 	strcpy(menu->title, title);
 	menu->next_entry = 0;
 	menu->selected_index = 0;
+    push_to_pool(menu);
 	return menu;
 }
 
@@ -27,6 +46,7 @@ menu_t *create_yes_no_menu(const char *action,
 	menu_append_entry(menu, yes_entry);
 	menu_append_entry(menu, no_entry);
 
+    push_to_pool(menu);
 	return menu;
 }
 
@@ -45,21 +65,20 @@ void menu_draw(menu_t *menu)
 
 	gfx_con.fntsz = 16;
 	gfx_printf(&gfx_con, "%k----- %s -----%k\n\n", 0xFFF45642, menu->title, WHITE);
-    gfx_con.fntsz = 14;
 
 	for (size_t i = 0; i < menu->next_entry; i++)
 	{
 		if (i == menu->selected_index)
 		{
-			gfx_printf(&gfx_con, "%k-> %k%s\n", WHITE, menu->entries[i]->color, menu->entries[i]->text);
+			gfx_printf(&gfx_con, "%k-> %k%s%k\n", WHITE, menu->entries[i]->color, menu->entries[i]->text, WHITE);
 		}
 		else if (menu->entries[i]->handler == NULL)
 		{
-			gfx_printf(&gfx_con, "\n %k%s\n", menu->entries[i]->color, menu->entries[i]->text);
+			gfx_printf(&gfx_con, "\n %k%s%k\n", menu->entries[i]->color, menu->entries[i]->text, WHITE);
 		}
 		else
 		{
-			gfx_printf(&gfx_con, "%k-> %k%s\n", BLACK, menu->entries[i]->color, menu->entries[i]->text);
+			gfx_printf(&gfx_con, "%k-> %k%s%k\n", BLACK, menu->entries[i]->color, menu->entries[i]->text, WHITE);
 		}
 	}
 }
@@ -79,7 +98,11 @@ void skip_null_handlers(menu_t *menu, int direction)
 int menu_update(menu_t *menu)
 {
 	menu_entry_t *entry = NULL;
-	u32 input = btn_wait();
+	u32 input;
+
+    menu_draw(menu);
+
+    input = btn_wait();
 
 	if ((input & BTN_VOL_UP) && menu->selected_index > 0)
 	{
@@ -96,15 +119,15 @@ int menu_update(menu_t *menu)
 		entry = menu->entries[menu->selected_index];
 		if (entry->handler != NULL)
 		{
-			// Just for development
 			gfx_clear_color(&gfx_ctxt, BLACK);
-			// ----------------------------
+            gfx_con_setpos(&gfx_con, 20, 50);
 			if (entry->handler(entry->param) != 0)
 				return 0;
+
+            gfx_clear_color(&gfx_ctxt, BLACK);
             menu_draw(menu);
 		}
 	}
-    menu_draw(menu);
 	return 1;
 }
 

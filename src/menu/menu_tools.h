@@ -14,14 +14,21 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef _REINX_MENU_H_
-#define _REINX_MENU_H_
+#ifndef _MENU_TOOLS_H_
+#define _MENU_TOOLS_H_
 
-#include "menu/menu.h"
-#include "menu/menu_entry.h"
-#include "menu/menu_tools.h"
-#include "menu/menu_pool.h"
+#include "../hwinit.h"
+#include "../fs.h"
+#include "../error.h"
 
-void init_reinx_menu(void);
+int is_autorcm_enabled(void);
+int enable_autorcm();
+int disable_autorcm();
+
+int power_off();
+int reboot_rcm();
+int reboot_normal();
+
+int check_burnt_fuses();
 
 #endif
