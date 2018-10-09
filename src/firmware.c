@@ -31,8 +31,11 @@ int drawSplash() {
         fread((void*)0xC0000000, fsize(), 1);
         fclose();
         return 1;
-    }
-    return 0;
+    } else if(fopen("/splash.bin", "rb") != 0) {
+        fread((void*)0xC0000000, fsize(), 1);
+        fclose();
+        return 1;
+    } return 0;
 }
 
 pk11_offs *pkg11_offsentify(u8 *pkg1) {
