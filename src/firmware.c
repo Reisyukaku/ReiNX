@@ -175,7 +175,7 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
     if(!customKern) {
         u32 crc = crc32c(pkg2->data, pkg2->sec_size[PKG2_SEC_KERNEL]);
         uPtr kern = (uPtr)&pkg2->data;
-        uPtr sendOff, recvOff, codeRcvOff, codeSndOff, svcVerifOff, svcDebugOff, ver;
+        uPtr sendOff, recvOff, codeRcvOff, codeSndOff, svcVerifOff, svcDebugOff, ver, peek, poke;
         switch(crc){
             case 0x427f2647:{   //1.0.0
                 svcVerifOff = 0x3764C;
@@ -234,6 +234,8 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
                 recvOff = 0x28DAC;
                 codeSndOff = 8;
                 codeRcvOff = 8;
+                peek = 0x42D3C;
+                poke = 0x42E00;
                 ver = 5;
                 break;
             }
@@ -244,6 +246,8 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
                 recvOff = 0x29B6C;
                 codeSndOff = 0x10;
                 codeRcvOff = 0x10;
+                peek = 0x44E84;
+                poke = 0x44F48;
                 ver = 6;
                 break;
             }
@@ -253,12 +257,12 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
         }
         
         //ID Send
-        uPtr freeSpace = getFreeSpace((void*)(kern+0x45000), 0x200, 0x20000) + 0x45000;      //Find area to write payload
+        uPtr freeSpace = getFreeSpace((void*)(kern+0x45000), 0x200, 0x20000) + 0x45000;                //Find area to write payload
         print("Kernel Freespace: 0x%08X\n", freeSpace);
         size_t payloadSize;
         u32 *sndPayload = getSndPayload(ver, &payloadSize);
         *(vu32*)(kern + sendOff) = _B(sendOff, freeSpace);                                             //write hook to payload
-        memcpy((void*)(kern + freeSpace), sndPayload, payloadSize);                             //Copy payload to free space
+        memcpy((void*)(kern + freeSpace), sndPayload, payloadSize);                                    //Copy payload to free space
         *(vu32*)(kern + freeSpace + payloadSize) = _B(freeSpace + payloadSize, sendOff + codeSndOff);  //Jump back skipping the hook
         
         //ID Receive
@@ -273,6 +277,10 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
         if (fopen("/ReiNX/debug", "rb")) {
             fclose();
             *(vu32*)(kern + svcDebugOff) = _MOVZX(8, 1, 0);
+        }
+        if(peek && poke) {
+            memcpy((void*)(kern + peek), peekPayload, sizeof(peekPayload));
+            memcpy((void*)(kern + poke), pokePayload, sizeof(pokePayload));
         }
         
         end:;
