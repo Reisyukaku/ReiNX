@@ -38,13 +38,16 @@ build:
     script:
         - docker build -t reinx-builder .
         - docker run -a stdout -a stderr --name reinx-builder -v $(pwd):/developer reinx-builder
+        - mv out ReiNX-Build
     artifacts:
         name: "reinx-nightly-$CI_COMMIT_SHA"
         paths:
-            - out/
+            - ReiNX-Build/
 
 publish_nightly:
     stage: deploy
+    dependencies:
+        - build
     script:
         - touch /tmp/reinx_build_push_cookie_jar
         - >
