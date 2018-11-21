@@ -29,8 +29,13 @@ before_script:
     - apk --no-cache add curl
     - apk --no-cache add tree
     - apk --no-cache add zip
+    - apk --no-cache add openssl
     - rm -rf NX_Sysmodules
     - git submodule update --init --recursive
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
     - tree
 
 build:
@@ -51,7 +56,9 @@ publish_nightly:
     script:
         - zip -r reinx-nightly-$CI_COMMIT_SHA.zip ReiNX-Build
         - >
-          echo "{\"_links\" : { \"type\" : { \"href\" : \"$BASE_URL/rest/type/node/build\"} },\"type\" : [{\"target_id\":\"build\"}],\"title\" : [{ \"value\" : \"$CI_COMMIT_MESSAGE\" }],\"field_build\" : [{ \"value\" : \"$(base64 reinx-nightly-$CI_COMMIT_SHA.zip)\", \"filename\" : \"reinx-nightly-$CI_COMMIT_SHA.zip\" }],\"field_commit_hash\" : [{ \"value\" : \"$CI_COMMIT_SHA\" }],\"field_branch\" : [{ \"value\" : \"$CI_COMMIT_REF_NAME\" }]}" > /tmp/reinx_build_push_data
+          sftp -o Port=2222 dev.2a4a89cb-37c7-4cd7-9b54-1e4df7504fe7@appserver.dev.2a4a89cb-37c7-4cd7-9b54-1e4df7504fe7.drush.in:files/builds <<< $"put reinx-nightly-$CI_COMMIT_SHA.zip"
+        - >
+          echo "{\"_links\" : { \"type\" : { \"href\" : \"$BASE_URL/rest/type/node/build\"} },\"type\" : [{\"target_id\":\"build\"}],\"title\" : [{ \"value\" : \"$CI_COMMIT_MESSAGE\" }],\"field_build_download\" : [{ \"uri\" : \"/files/builds/$(base64 reinx-nightly-$CI_COMMIT_SHA.zip)\" }],\"field_commit_hash\" : [{ \"value\" : \"$CI_COMMIT_SHA\" }],\"field_branch\" : [{ \"value\" : \"$CI_COMMIT_REF_NAME\" }]}" > /tmp/reinx_build_push_data
         - touch /tmp/reinx_build_push_cookie_jar
         - >
           curl -vvv -X POST $BASE_URL/user/login -H 'Authorization: Basic cmVpbng6Z3VpZGU=' -H 'cache-control: no-cache'   -H 'content-type: application/x-www-form-urlencoded'   --data "$DRUPAL_LOGIN_POST_DATA" -b /tmp/reinx_build_push_cookie_jar   -c /tmp/reinx_build_push_cookie_jar
