@@ -28,6 +28,7 @@ before_script:
     - apk --no-cache add git
     - apk --no-cache add curl
     - apk --no-cache add tree
+    - apk --no-cache add zip
     - rm -rf NX_Sysmodules
     - git submodule update --init --recursive
     - tree
@@ -37,6 +38,9 @@ build:
     script:
         - docker build -t reinx-builder .
         - docker run -a stdout -a stderr --name reinx-builder -v $(pwd):/developer reinx-builder
+        - zip -r reinx-nightly-$CI_COMMIT_SHA.zip out
+    artifacts:
+        - reinx-nightly-$CI_COMMIT_SHA.zip
 
 publish_nightly:
     stage: deploy
