@@ -19,6 +19,7 @@ variables:
     # When using dind, it's wise to use the overlayfs driver for
     # improved performance.
     DOCKER_DRIVER: overlay2
+    GIT_SUBMODULE_STRATEGY: recursive 
     
 services:
     - docker:dind
@@ -27,8 +28,6 @@ before_script:
     - docker info
     - apk --no-cache add git
     - apk --no-cache add curl
-    - git submodule sync --recursive
-    - git submodule update --init --recursive
 
 build:
     stage: build
