@@ -38,9 +38,10 @@ build:
     script:
         - docker build -t reinx-builder .
         - docker run -a stdout -a stderr --name reinx-builder -v $(pwd):/developer reinx-builder
-        - zip -r reinx-nightly-$CI_COMMIT_SHA.zip out
     artifacts:
-        - reinx-nightly-$CI_COMMIT_SHA.zip
+        name: "reinx-nightly-$CI_COMMIT_SHA"
+        paths:
+            - out/
 
 publish_nightly:
     stage: deploy
