@@ -430,6 +430,18 @@ void firmware() {
     }
     SYSREG(AHB_AHB_SPARE_REG) = (volatile vu32)0xFFFFFF9F;
     PMC(APBDEV_PMC_SCRATCH49) = 0;
+    
+    if(btn_read() & BTN_VOL_UP){
+        if(fopen("/ReiNX/Recovery.bin", "rb") != 0) {
+            fread((void*)PAYLOAD_ADDR, fsize(), 1);
+            fclose();
+            sdUnmount();
+            ((void (*)())PAYLOAD_ADDR)();
+        } else {
+            error("Failed to launch recovery menu!\nIs it missing from /ReiNX folder?\n");
+            btn_wait();
+        }
+    }
 
     if (btn_read() & BTN_VOL_DOWN) {
         print("Booting verbosely\n");
