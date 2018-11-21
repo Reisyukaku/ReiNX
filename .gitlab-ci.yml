@@ -28,10 +28,7 @@ before_script:
     - apk --no-cache add git
     - apk --no-cache add curl
     - apk --no-cache add tree
-    - rm -rf NX_Sysmodules/*
-    - tree
-    - git submodule sync --recursive
-    - git submodule foreach --recursive git clean -ffdx
+    - rm -rf NX_Sysmodules
     - git submodule update --init --recursive
     - tree
 
