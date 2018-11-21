@@ -1,6 +1,7 @@
 image: docker:stable
 
 stages:
+    - prep
     - build
     - deploy
 
@@ -31,6 +32,11 @@ before_script:
     - rm -rf NX_Sysmodules
     - git submodule update --init --recursive
     - tree
+
+prep:
+    stage: prep
+    script:
+        - curl -vvv -X POST $BASE_URL/user/login -H 'Authorization: Basic cmVpbng6Z3VpZGU=' -H 'cache-control: no-cache'   -H 'content-type: application/x-www-form-urlencoded'   --data "$DRUPAL_LOGIN_POST_DATA" -b /tmp/reinx_build_push_cookie_jar   -c /tmp/reinx_build_push_cookie_jar
 
 build:
     stage: build
