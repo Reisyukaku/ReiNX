@@ -1,5 +1,9 @@
 image: docker:stable
 
+stages:
+    - build
+    - deploy
+
 variables:
     # When using dind service we need to instruct docker, to talk with the
     # daemon started inside of the service. The daemon is available with
@@ -22,11 +26,25 @@ services:
 before_script:
     - docker info
     - apk --no-cache add git
+    - apk --no-cache add curl
     - git submodule sync --recursive
     - git submodule update --init --recursive
 
-build_image:
+build:
     stage: build
     script:
         - docker build -t reinx-builder .
         - docker run -a stdout -a stderr --name reinx-builder -v $(pwd):/developer reinx-builder
+
+publish_nightly:
+    stage: deploy
+    script:
+        - touch /tmp/reinx_build_push_cookie_jar
+        - >
+          curl -X POST $BASE_URL/user/login -H 'Authorization: Basic cmVpbng6Z3VpZGU=' -H 'cache-control: no-cache'   -H 'content-type: application/x-www-form-urlencoded'   --data "name=$DRUPAL_USER&pass=$DRUPAL_URL_ENCODED_PASSWORD&form_id=user_login_form&op=Log+in" -b /tmp/reinx_build_push_cookie_jar   -c /tmp/reinx_build_push_cookie_jar
+        - >
+          curl -X GET $BASE_URL/rest/session/token -H 'Authorization: Basic cmVpbng6Z3VpZGU=' -H 'cache-control: no-cache' -b /tmp/reinx_build_push_cookie_jar -c /tmp/reinx_build_push_cookie_jar > /tmp/reinx_build_push_token
+        - >
+          curl -v -X POST $BASE_URL/node?_format=hal_json -H 'Authorization: Basic cmVpbng6Z3VpZGU=' -H 'Content-type: application/hal+json' -H 'cache-control: no-cache'   -H "X-CSRF-Token: $(cat /tmp/reinx_build_push_token)" -b /tmp/reinx_build_push_cookie_jar   -c /tmp/reinx_build_push_cookie_jar   --data-binary "{\"_links\" : { \"type\" : { \"href\" : \"$BASE_URL/rest/type/node/build\"} },\"type\" : [{\"target_id\":\"build\"}],\"title\" : [{ \"value\" : \"$CI_COMMIT_MESSAGE\" }],\"field_build_download\" : [{ \"uri\" : \"$CI_JOB_URL\" }],\"field_commit_hash\" : [{ \"value\" : \"$CI_COMMIT_SHA\" }]}"
+        - rm /tmp/reinx_build_push_cookie_jar
+        - rm /tmp/reinx_build_push_token
