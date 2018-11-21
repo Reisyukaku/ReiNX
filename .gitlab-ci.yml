@@ -43,7 +43,7 @@ publish_nightly:
     script:
         - touch /tmp/reinx_build_push_cookie_jar
         - >
-          curl -vvv -X POST $BASE_URL/user/login -H 'Authorization: Basic cmVpbng6Z3VpZGU=' -H 'cache-control: no-cache'   -H 'content-type: application/x-www-form-urlencoded'   --data "name=$DRUPAL_USER&pass=$DRUPAL_URL_ENCODED_PASSWORD&form_id=user_login_form&op=Log+in" -b /tmp/reinx_build_push_cookie_jar   -c /tmp/reinx_build_push_cookie_jar
+          curl -vvv -X POST $BASE_URL/user/login -H 'Authorization: Basic cmVpbng6Z3VpZGU=' -H 'cache-control: no-cache'   -H 'content-type: application/x-www-form-urlencoded'   --data "$DRUPAL_LOGIN_POST_DATA" -b /tmp/reinx_build_push_cookie_jar   -c /tmp/reinx_build_push_cookie_jar
         - >
           curl -X GET $BASE_URL/rest/session/token -H 'Authorization: Basic cmVpbng6Z3VpZGU=' -H 'cache-control: no-cache' -b /tmp/reinx_build_push_cookie_jar -c /tmp/reinx_build_push_cookie_jar > /tmp/reinx_build_push_token
         - >
