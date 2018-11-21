@@ -28,9 +28,6 @@ before_script:
     - apk --no-cache add git
     - apk --no-cache add curl
     - git submodule sync --recursive
-    - git submodule foreach --recursive git clean -ffdx
-    - git submodule update --init --recursive
-
 
 build:
     stage: build
