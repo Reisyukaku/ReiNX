@@ -22,7 +22,8 @@ services:
 before_script:
     - docker info
     - apk --no-cache add git
-    - git submodule sync --recursive --remote
+    - git submodule sync --recursive
+    - git submodule update --init --recursive
 
 build_image:
     stage: build
