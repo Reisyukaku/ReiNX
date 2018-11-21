@@ -32,6 +32,7 @@ before_script:
     - tree
     - git submodule sync --recursive
     - git submodule update --init --recursive
+    - tree
 
 build:
     stage: build
