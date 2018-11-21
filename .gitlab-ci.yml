@@ -50,13 +50,14 @@ publish_nightly:
         - build
     script:
         - zip -r reinx-nightly-$CI_COMMIT_SHA.zip ReiNX-Build
-
+        - echo "{\"_links\" : { \"type\" : { \"href\" : \"$BASE_URL/rest/type/node/build\"} },\"type\" : [{\"target_id\":\"build\"}],\"title\" : [{ \"value\" : \"$CI_COMMIT_MESSAGE\" }],\"field_build\" : [{ \"value\" : \"$(base64 reinx-nightly-$CI_COMMIT_SHA.zip)\", \"filename\" : \"reinx-nightly-$CI_COMMIT_SHA.zip\" }],\"field_commit_hash\" : [{ \"value\" : \"$CI_COMMIT_SHA\" }],\"field_branch\" : [{ \"value\" : \"$CI_COMMIT_REF_NAME\" }]}" > /tmp/reinx_build_push_data
         - touch /tmp/reinx_build_push_cookie_jar
         - >
           curl -vvv -X POST $BASE_URL/user/login -H 'Authorization: Basic cmVpbng6Z3VpZGU=' -H 'cache-control: no-cache'   -H 'content-type: application/x-www-form-urlencoded'   --data "$DRUPAL_LOGIN_POST_DATA" -b /tmp/reinx_build_push_cookie_jar   -c /tmp/reinx_build_push_cookie_jar
         - >
           curl -X GET $BASE_URL/rest/session/token -H 'Authorization: Basic cmVpbng6Z3VpZGU=' -H 'cache-control: no-cache' -b /tmp/reinx_build_push_cookie_jar -c /tmp/reinx_build_push_cookie_jar > /tmp/reinx_build_push_token
         - >
-          curl -X POST $BASE_URL/node?_format=hal_json -H 'Authorization: Basic cmVpbng6Z3VpZGU=' -H 'Content-type: application/hal+json' -H 'cache-control: no-cache'   -H "X-CSRF-Token: $(cat /tmp/reinx_build_push_token)" -b /tmp/reinx_build_push_cookie_jar   -c /tmp/reinx_build_push_cookie_jar   --data-binary "{\"_links\" : { \"type\" : { \"href\" : \"$BASE_URL/rest/type/node/build\"} },\"type\" : [{\"target_id\":\"build\"}],\"title\" : [{ \"value\" : \"$CI_COMMIT_MESSAGE\" }],\"field_build\" : [{ \"value\" : \"$(base64 reinx-nightly-$CI_COMMIT_SHA.zip)\", \"filename\" : \"reinx-nightly-$CI_COMMIT_SHA.zip\" }],\"field_commit_hash\" : [{ \"value\" : \"$CI_COMMIT_SHA\" }],\"field_branch\" : [{ \"value\" : \"$CI_COMMIT_REF_NAME\" }]}"
+          curl -X POST $BASE_URL/node?_format=hal_json -H 'Authorization: Basic cmVpbng6Z3VpZGU=' -H 'Content-type: application/hal+json' -H 'cache-control: no-cache'   -H "X-CSRF-Token: $(cat /tmp/reinx_build_push_token)" -b /tmp/reinx_build_push_cookie_jar   -c /tmp/reinx_build_push_cookie_jar   --data-binary @/tmp/reinx_build_push_data
         - rm /tmp/reinx_build_push_cookie_jar
         - rm /tmp/reinx_build_push_token
+        - rm /tmp/reinx_build_push_data
