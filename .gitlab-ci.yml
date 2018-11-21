@@ -30,6 +30,7 @@ before_script:
     - apk --no-cache add tree
     - apk --no-cache add zip
     - apk --no-cache add openssl
+    - apk --no-cache add ssh
     - rm -rf NX_Sysmodules
     - git submodule update --init --recursive
     - eval $(ssh-agent -s)
