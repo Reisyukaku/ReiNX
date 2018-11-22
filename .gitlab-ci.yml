@@ -35,6 +35,7 @@ before_script:
     - git submodule update --init --recursive
     - eval $(ssh-agent -s)
     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
     - mkdir -p ~/.ssh
     - chmod 700 ~/.ssh
     - tree
