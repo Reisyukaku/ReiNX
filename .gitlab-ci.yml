@@ -5,40 +5,37 @@ stages:
     - deploy
 
 variables:
-    # When using dind service we need to instruct docker, to talk with the
-    # daemon started inside of the service. The daemon is available with
-    # a network connection instead of the default /var/run/docker.sock socket.
-    #
-    # The 'docker' hostname is the alias of the service container as described at
-    # https://docs.gitlab.com/ee/ci/docker/using_docker_images.html#accessing-the-services
-    #
-    # Note that if you're using Kubernetes executor, the variable should be set to
-    # tcp://localhost:2375 because of how Kubernetes executor connects services
-    # to the job container
     DOCKER_HOST: tcp://docker:2375/
-    # When using dind, it's wise to use the overlayfs driver for
-    # improved performance.
     DOCKER_DRIVER: overlay2
     
 services:
     - docker:dind
 
 before_script:
+    # Provide information for debugging.
     - docker info
+
+    # Install requirements.
     - apk --no-cache add git
     - apk --no-cache add curl
     - apk --no-cache add tree
     - apk --no-cache add zip
     - apk --no-cache add openssl
     - apk --no-cache add openssh-client
+
+    # Fix Git Submodules.
     - rm -rf NX_Sysmodules
     - git submodule update --init --recursive
+
+    # Add SSH info.
     - mkdir ~/.ssh
     - eval $(ssh-agent -s)
     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
     - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
     - mkdir -p ~/.ssh
     - chmod 700 ~/.ssh
+
+    # Provide information for debugging.
     - tree
 
 build:
