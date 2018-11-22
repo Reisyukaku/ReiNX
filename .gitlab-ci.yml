@@ -76,7 +76,7 @@ publish_nightly:
 
         # Create build node.
         - >
-          curl -X POST $BASE_URL/node?_format=hal_json -H 'Authorization: Basic cmVpbng6Z3VpZGU=' -H 'Content-type: application/hal+json' -H 'cache-control: no-cache'   -H "X-CSRF-Token: $(cat /tmp/reinx_build_push_token)" -b /tmp/reinx_build_push_cookie_jar   -c /tmp/reinx_build_push_cookie_jar   --data-binary "{\"_links\" : { \"type\" : { \"href\" : \"$BASE_URL/rest/type/node/build\"} },\"type\" : [{\"target_id\":\"build\"}],\"title\" : [{ \"value\" : \"$CI_COMMIT_MESSAGE\" }],\"field_build_download\" : [{ \"uri\" : \"$BASE_URL/files/builds/reinx-nightly-$CI_COMMIT_SHA.zip\" }],\"field_commit_hash\" : [{ \"value\" : \"$CI_COMMIT_SHA\" }],\"field_branch\" : [{ \"value\" : \"$CI_COMMIT_REF_NAME\" }]}"
+          curl -X POST $BASE_URL/node?_format=hal_json -H 'Authorization: Basic cmVpbng6Z3VpZGU=' -H 'Content-type: application/hal+json' -H 'cache-control: no-cache'   -H "X-CSRF-Token: $(cat /tmp/reinx_build_push_token)" -b /tmp/reinx_build_push_cookie_jar   -c /tmp/reinx_build_push_cookie_jar   --data-binary "{\"_links\" : { \"type\" : { \"href\" : \"$BASE_URL/rest/type/node/build\"} },\"type\" : [{\"target_id\":\"build\"}],\"title\" : [{ \"value\" : \"$CI_COMMIT_MESSAGE\" }],\"field_build_download\" : [{ \"uri\" : \"$BASE_URL/sites/default/files/builds/reinx-nightly-$CI_COMMIT_SHA.zip\" }],\"field_commit_hash\" : [{ \"value\" : \"$CI_COMMIT_SHA\" }],\"field_branch\" : [{ \"value\" : \"$CI_COMMIT_REF_NAME\" }]}"
         
         # Clean up for security's sake.
         - rm /tmp/reinx_build_push_cookie_jar
