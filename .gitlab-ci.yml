@@ -33,6 +33,7 @@ before_script:
     - apk --no-cache add openssh-client
     - rm -rf NX_Sysmodules
     - git submodule update --init --recursive
+    - mkdir ~/.ssh
     - eval $(ssh-agent -s)
     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
     - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
