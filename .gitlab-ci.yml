@@ -62,7 +62,7 @@ publish_nightly:
         
         # These weird YAML syntaxes are to allow special character in the commands.
         - >
-          sftp -o Port=2222 dev.2a4a89cb-37c7-4cd7-9b54-1e4df7504fe7@appserver.dev.2a4a89cb-37c7-4cd7-9b54-1e4df7504fe7.drush.in:files/builds -b /tmp/reinx_build_push_data
+          sftp -b /tmp/reinx_build_push_data -o Port=2222 dev.2a4a89cb-37c7-4cd7-9b54-1e4df7504fe7@appserver.dev.2a4a89cb-37c7-4cd7-9b54-1e4df7504fe7.drush.in:files/builds
 
         # Create cookie file for our upcoming transfer or curl may throw an error.
         - touch /tmp/reinx_build_push_cookie_jar
