@@ -35,13 +35,6 @@ int drawSplash() {
     return 0;
 }
 
-pk11_offs *pkg11_offsentify(u8 *pkg1) {
-    for (u32 i = 0; _pk11_offs[i].id; i++)
-        if (!memcmp(pkg1 + 0x10, _pk11_offs[i].id, 12))
-            return (pk11_offs *)&_pk11_offs[i];
-    return NULL;
-}
-
 void patchFS(pkg2_kip1_info_t* ki) {
     u8 kipHash[0x20];
 
@@ -63,10 +56,10 @@ void patchFS(pkg2_kip1_info_t* ki) {
 
     kippatchset_t *pset = kippatch_find_set(kipHash, kip_patches);
     if (!pset) {
-      print("  could not find patchset with matching hash\n");
+        print("  could not find patchset with matching hash\n");
     } else {
-      int res = kippatch_apply_set(kipDecompText, moddedKip->sections[0].size_decomp, pset);
-      if (res) error("kippatch_apply_set() failed\n");
+        int res = kippatch_apply_set(kipDecompText, moddedKip->sections[0].size_decomp, pset);
+        if (res) error("kippatch_apply_set() failed\n");
     }
 
     moddedKip->flags &= ~1;
@@ -104,7 +97,8 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
         uPtr *hdrsig_ptr = NULL;
         uPtr *sha2_ptr = NULL;
         switch(pk11->kb) {
-            case KB_FIRMWARE_VERSION_100_200: {
+            //case KB_FIRMWARE_VERSION_100:
+            case KB_FIRMWARE_VERSION_200: {
                 u8 verPattern[] = {0x19, 0x00, 0x36, 0xE0, 0x03, 0x08, 0x91};
                 u8 hdrSigPattern[] = {0xFF, 0x97, 0xC0, 0x00, 0x00, 0x34, 0xA1, 0xFF, 0xFF};
                 u8 sha2Pattern[] = {0xE0, 0x03, 0x08, 0x91, 0xE1, 0x03, 0x13, 0xAA};
@@ -163,7 +157,7 @@ void patch(pk11_offs *pk11, pkg2_hdr_t *pkg2, link_t *kips) {
             }
         }
         
-        if (pk11->kb != KB_FIRMWARE_VERSION_100_200) {
+        if (pk11->kb > KB_FIRMWARE_VERSION_200) {
             *pk21_ptr = NOP;
         };
         *ver_ptr = NOP;
@@ -301,25 +295,37 @@ u8 loadFirm() {
     //Init nand
     sdmmc_storage_init_mmc(&storage, &sdmmc, SDMMC_4, SDMMC_BUS_WIDTH_8, 4);
     sdmmc_storage_set_mmc_partition(&storage, 1);
+    
+    //Read Boot0
+    u8 *bootBuf = (u8 *)malloc(NX_EMMC_BLOCKSIZE);
+    sdmmc_storage_read(&storage, 0x2200 / NX_EMMC_BLOCKSIZE , 1, bootBuf);
+    u32 ver = *(u32*)(bootBuf+0x130);
+    for (u32 i = 0; _pk11_offs[i].kb != 0; i++) {   //TODO distinguish 1.x & 2.x 
+        if(_pk11_offs[i].kb == ver){
+            pk11Offs = (pk11_offs *)&_pk11_offs[i];
+            break;
+        }
+    }
+    print("Bootloader version: %d\n", ver);
+    free(bootBuf);
 
     // Read package1.
-    u8 *package1 = ReadPackage1(&storage);
+    u8 *pkg1ldr = ReadPackage1Ldr(&storage);
 
     // Setup firmware specific data.
-    pk11Offs = pkg11_offsentify(package1);
     u8 *keyblob = (u8 *)malloc(NX_EMMC_BLOCKSIZE);
-    sdmmc_storage_read(&storage, 0x180000 / NX_EMMC_BLOCKSIZE + pk11Offs->kb, 1, keyblob);
-    keygen(keyblob, pk11Offs->kb, package1 + pk11Offs->tsec_off);
+    sdmmc_storage_read(&storage, 0x180000 / NX_EMMC_BLOCKSIZE + pk11Offs->kb-1, 1, keyblob);
+    keygen(keyblob, pk11Offs->kb, pkg1ldr + pk11Offs->tsec_off);
     free(keyblob);
 
     // Decrypt package1 and setup warmboot.
     print("Decrypting Package1...\n");
-    u8 *pkg11 = package1 + pk11Offs->pkg11_off;
+    u8 *pkg11 = pkg1ldr + pk11Offs->pkg11_off;
     u32 pkg11_size = *(u32 *)pkg11;
     se_aes_crypt_ctr(11, pkg11 + 0x20, pkg11_size, pkg11 + 0x20, pkg11_size, pkg11 + 0x10);
-    pkg1_unpack(pk11Offs, package1);
+    pkg1_unpack(pk11Offs, pkg11);
     PMC(APBDEV_PMC_SCRATCH1) = pk11Offs->warmboot_base;
-    free(package1);
+    free(pkg1ldr);
 
     //Read package2
     u8 *pkg2 = ReadPackage2(&storage);
@@ -436,6 +442,8 @@ void firmware() {
             fread((void*)PAYLOAD_ADDR, fsize(), 1);
             fclose();
             sdUnmount();
+            CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_V) |= 0x400; // Enable AHUB clock.
+            CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_Y) |= 0x40;  // Enable APE clock.
             ((void (*)())PAYLOAD_ADDR)();
         } else {
             error("Failed to launch recovery menu!\nIs it missing from /ReiNX folder?\n");

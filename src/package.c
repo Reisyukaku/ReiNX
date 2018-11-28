@@ -20,7 +20,7 @@
 #include "package.h"
 #include "kippatches/fs.inc"
 
-u8 *ReadPackage1(sdmmc_storage_t *storage) {
+u8 *ReadPackage1Ldr(sdmmc_storage_t *storage) {
     u8 *pk11 = malloc(0x40000);
     sdmmc_storage_read(storage, 0x100000 / NX_EMMC_BLOCKSIZE, 0x40000 / NX_EMMC_BLOCKSIZE, pk11);
     return pk11;
@@ -84,12 +84,12 @@ pkg2_hdr_t *unpackFirmwarePackage(u8 *data) {
     return hdr;
 }
 
-void pkg1_unpack(pk11_offs *offs, u8 *pkg1) {
+void pkg1_unpack(pk11_offs *offs, u32 pkg1Off) {
     u8 ret = 0;
     u8 *extWb;
     u8 *extSec;
     
-    pk11_header *hdr = (pk11_header *)(pkg1 + offs->pkg11_off + 0x20);
+    pk11_header *hdr = (pk11_header *)(pkg1Off + 0x20);
 
     u32 sec_size[3] = { hdr->wb_size, hdr->ldr_size, hdr->sm_size };
     u8 *pdata = (u8 *)hdr + sizeof(pk11_header);

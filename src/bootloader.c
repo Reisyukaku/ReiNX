@@ -72,7 +72,7 @@ int keygen(u8 *keyblob, u32 fwVer, void *tsec_fw) {
     // Derive keyblob keys from TSEC+SBK.
     se_aes_crypt_block_ecb(0x0D, 0x00, tmp, keyblob_keyseeds[0]);
     se_aes_unwrap_key(0x0F, 0x0E, tmp);
-    se_aes_crypt_block_ecb(0xD, 0x00, tmp, keyblob_keyseeds[fwVer]);
+    se_aes_crypt_block_ecb(0xD, 0x00, tmp, keyblob_keyseeds[fwVer-1]);
     se_aes_unwrap_key(0x0D, 0x0E, tmp);
 
     // Clear SBK
@@ -83,14 +83,16 @@ int keygen(u8 *keyblob, u32 fwVer, void *tsec_fw) {
 
     // Decrypt keyblob and set keyslots.
     se_aes_crypt_ctr(0x0D, keyblob + 0x20, 0x90, keyblob + 0x20, 0x90, keyblob + 0x10);
-    se_aes_key_set(0x0B, keyblob + 0x20 + 0x80, 0x10); // Package1 key
+    if(fwVer < KB_FIRMWARE_VERSION_620) 
+        se_aes_key_set(0x0B, keyblob + 0x20 + 0x80, 0x10); // Package1 key
     se_aes_key_set(0x0C, keyblob + 0x20, 0x10);
     se_aes_key_set(0x0D, keyblob + 0x20, 0x10);
 
     se_aes_crypt_block_ecb(0x0C, 0, tmp, master_keyseed_retail);
 
     switch (fwVer) {
-        case KB_FIRMWARE_VERSION_100_200:
+        //case KB_FIRMWARE_VERSION_100:
+        case KB_FIRMWARE_VERSION_200:
         case KB_FIRMWARE_VERSION_300:
         case KB_FIRMWARE_VERSION_301:
             se_aes_unwrap_key(0x0D, 0x0F, console_keyseed);
@@ -106,6 +108,7 @@ int keygen(u8 *keyblob, u32 fwVer, void *tsec_fw) {
 
         case KB_FIRMWARE_VERSION_500:
         case KB_FIRMWARE_VERSION_600:
+        case KB_FIRMWARE_VERSION_620:
         default:
             se_aes_unwrap_key(0x0A, 0x0F, console_keyseed_4xx);
             se_aes_unwrap_key(0x0F, 0x0F, console_keyseed);
@@ -115,8 +118,10 @@ int keygen(u8 *keyblob, u32 fwVer, void *tsec_fw) {
     }
 
     // Package2 key
-    se_key_acc_ctrl(0x08, 0x15);
-    se_aes_unwrap_key(0x08, 0x0C, key8_keyseed);
+    if(fwVer < KB_FIRMWARE_VERSION_620){
+        se_key_acc_ctrl(0x08, 0x15);
+        se_aes_unwrap_key(0x08, 0x0C, key8_keyseed);
+    }
 }
 
 void mbist_workaround() {

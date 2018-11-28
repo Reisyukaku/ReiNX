@@ -88,7 +88,6 @@ typedef struct _pkg2_kip1_info_t
 } pkg2_kip1_info_t;
 
 typedef struct {
-    const char *id;
     u32 kb;
     u32 tsec_off;
     u32 pkg11_off;
@@ -108,6 +107,26 @@ typedef struct {
     u32 sm_size;
     u32 sm_off;
 } pk11_header;
+
+typedef struct kipdiff_s {
+  u64 offset;              // offset from start of kip's .text segment
+  u32 len;                 // length of below strings, NULL signifies end of patch
+  const char *orig_bytes;  // original byte string (this must match exactly)
+  const char *patch_bytes; // replacement byte string (same length)
+} kipdiff_t;
+
+// a single patch for a particular kip version
+typedef struct kippatch_s {
+  const char *name;        // name/id of the patch, NULL signifies end of patchset
+  kipdiff_t *diffs;        // array of kipdiff_t's to apply
+} kippatch_t;
+
+// a group of patches that patch several different things in a particular kip version
+typedef struct kippatchset_s {
+  const char *kip_name;    // name/id of the kip, NULL signifies end of patchset list
+  const char *kip_hash;    // sha256 of the right version of the kip
+  kippatch_t *patches;     // set of patches for this version of the kip
+} kippatchset_t;
 
 //SVCs
 static u8 peekPayload[] = {
@@ -202,35 +221,14 @@ static u32 PRC_ID_RCV_600[] =
     0xA9BF2FEA, 0xF94043EB, 0x2A1503EA, 0xD37EF54A, 0xF86A696A, 0x92FFFFE9, 0x8A090148, 0xD2FFFFE9, 0x8A09014A, 0xD2FFFFC9, 0xEB09015F, 0x54000100, 0xA9BF27E8, 0xF9400308, 0xF9401D08, 0xAA1803E0, 0xD63F0100, 0xA8C127E8, 0xAA0003E8, 0xA8C12FEA, 0xAA0803E0
 };
 
-typedef struct kipdiff_s {
-  u64 offset;              // offset from start of kip's .text segment
-  u32 len;                 // length of below strings, NULL signifies end of patch
-  const char *orig_bytes;  // original byte string (this must match exactly)
-  const char *patch_bytes; // replacement byte string (same length)
-} kipdiff_t;
-
-// a single patch for a particular kip version
-typedef struct kippatch_s {
-  const char *name;        // name/id of the patch, NULL signifies end of patchset
-  kipdiff_t *diffs;        // array of kipdiff_t's to apply
-} kippatch_t;
-
-// a group of patches that patch several different things in a particular kip version
-typedef struct kippatchset_s {
-  const char *kip_name;    // name/id of the kip, NULL signifies end of patchset list
-  const char *kip_hash;    // sha256 of the right version of the kip
-  kippatch_t *patches;     // set of patches for this version of the kip
-} kippatchset_t;
-
-
 extern kippatchset_t kip_patches[];
-u8 *ReadPackage1(sdmmc_storage_t *storage);
+u8 *ReadPackage1Ldr(sdmmc_storage_t *storage);
 u8 *ReadPackage2(sdmmc_storage_t *storage);
 int kippatch_apply(u8 *kipdata, u64 kipdata_len, kippatch_t *patch);
 int kippatch_apply_set(u8 *kipdata, u64 kipdata_len, kippatchset_t *patchset);
 kippatchset_t *kippatch_find_set(u8 *kiphash, kippatchset_t *patchsets);
 pkg2_hdr_t *unpackFirmwarePackage(u8 *data);
-void pkg1_unpack(pk11_offs *offs, u8 *pkg1);
+void pkg1_unpack(pk11_offs *offs, u32 pkg1Off);
 void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info);
 size_t calcKipSize(pkg2_kip1_t *kip1);
 void pkg2_parse_kips(link_t *info, pkg2_hdr_t *pkg2);
