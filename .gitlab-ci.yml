@@ -68,11 +68,15 @@ publish_nightly:
 
         # Cookie for an admin must be created and there is no default REST API for this.
         - >
-          curl -vvv -X POST $BASE_URL/user/login -H 'Authorization: Basic cmVpbng6Z3VpZGU=' -H 'cache-control: no-cache'   -H 'content-type: application/x-www-form-urlencoded'   --data "$DRUPAL_LOGIN_POST_DATA" -b /tmp/reinx_build_push_cookie_jar   -c /tmp/reinx_build_push_cookie_jar
+          curl -X POST $BASE_URL/user/login -H 'Authorization: Basic cmVpbng6Z3VpZGU=' -H 'cache-control: no-cache'   -H 'content-type: application/x-www-form-urlencoded'   --data "$DRUPAL_LOGIN_POST_DATA" -b /tmp/reinx_build_push_cookie_jar   -c /tmp/reinx_build_push_cookie_jar
         
         # We also need CSRF Token.
         - >
           curl -X GET $BASE_URL/rest/session/token -H 'Authorization: Basic cmVpbng6Z3VpZGU=' -H 'cache-control: no-cache' -b /tmp/reinx_build_push_cookie_jar -c /tmp/reinx_build_push_cookie_jar > /tmp/reinx_build_push_token
+
+        # Print Debug info for node JSON.
+        - >
+          echo "{\"_links\" : { \"type\" : { \"href\" : \"$BASE_URL/rest/type/node/build\"} },\"type\" : [{\"target_id\":\"build\"}],\"title\" : [{ \"value\" : \"$CI_COMMIT_MESSAGE\" }],\"field_build_download\" : [{ \"uri\" : \"$BASE_URL/sites/default/files/builds/reinx-nightly-$CI_COMMIT_SHA.zip\" }],\"field_commit_hash\" : [{ \"value\" : \"$CI_COMMIT_SHA\" }],\"field_branch\" : [{ \"value\" : \"$CI_COMMIT_REF_NAME\" }]}"
 
         # Create build node.
         - >
