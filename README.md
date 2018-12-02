@@ -9,7 +9,11 @@ Put `ReiNX` folder on the root of your switch's SD card and run `ReiNX.bin` with
 
 **Compiling:**
 
-You'll need devkitpro with devkitARM and run `make`
+You'll need devkitpro with devkitARM and run:
+```
+git clone --recurse-submodules https://github.com/Reisyukaku/ReiNX.git
+cd ReiNX && make
+```
 
 To compile with Docker, `chmod +x docker-build.sh` and run the shell script `./docker-build.sh`. After that, just check `out` dir. This will compile without requiring installation of DevKit* dependencies.
 
