@@ -20,6 +20,12 @@
 #include "package.h"
 #include "kippatches/fs.inc"
 
+u8 *ReadBoot0(sdmmc_storage_t *storage){
+    u8 *bctBuf = (u8 *)malloc(0x4000);
+    sdmmc_storage_read(storage, 0 , 0x4000 / NX_EMMC_BLOCKSIZE, bctBuf);
+    return bctBuf;
+}
+
 u8 *ReadPackage1Ldr(sdmmc_storage_t *storage) {
     u8 *pk11 = malloc(0x40000);
     sdmmc_storage_read(storage, 0x100000 / NX_EMMC_BLOCKSIZE, 0x40000 / NX_EMMC_BLOCKSIZE, pk11);
@@ -60,7 +66,7 @@ u8 *ReadPackage2(sdmmc_storage_t *storage) {
 pkg2_hdr_t *unpackFirmwarePackage(u8 *data) {
     print("Unpacking firmware...\n");
     pkg2_hdr_t *hdr = (pkg2_hdr_t *)(data + 0x100);
-    
+
     //Decrypt header.
     se_aes_crypt_ctr(8, hdr, sizeof(pkg2_hdr_t), hdr, sizeof(pkg2_hdr_t), hdr);
 
@@ -71,10 +77,9 @@ pkg2_hdr_t *unpackFirmwarePackage(u8 *data) {
 
     //Decrypt body
     data += (0x100 + sizeof(pkg2_hdr_t));
-    
+
     for (u32 i = 0; i < 4; i++) {
-        if (!hdr->sec_size[i])
-            continue;
+        if (!hdr->sec_size[i]) continue;
 
         se_aes_crypt_ctr(8, data, hdr->sec_size[i], data, hdr->sec_size[i], &hdr->sec_ctr[i * 0x10]);
 
@@ -88,12 +93,12 @@ void pkg1_unpack(pk11_offs *offs, u32 pkg1Off) {
     u8 ret = 0;
     u8 *extWb;
     u8 *extSec;
-    
+
     pk11_header *hdr = (pk11_header *)(pkg1Off + 0x20);
 
     u32 sec_size[3] = { hdr->wb_size, hdr->ldr_size, hdr->sm_size };
     u8 *pdata = (u8 *)hdr + sizeof(pk11_header);
-    
+
     for (u32 i = 0; i < 3; i++) {
         if (offs->sec_map[i] == 0 && offs->warmboot_base) {
             u8 *extWb = NULL;
@@ -115,18 +120,18 @@ void pkg1_unpack(pk11_offs *offs, u32 pkg1Off) {
         pdata += sec_size[offs->sec_map[i]];
     }
     if(extWb != NULL) {
-        free(extWb); 
+        free(extWb);
         customWarmboot = 1;
     }
     if(extSec != NULL) {
-        free(extSec); 
+        free(extSec);
         customSecmon = 1;
     }
 }
 
 void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info) {
     u8 *pdst = (u8 *)0xA9800000;
-
+    
     // Signature.
     memset(pdst, 0, 0x100);
     pdst += 0x100;
@@ -152,7 +157,6 @@ void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info) {
     hdr->sec_off[PKG2_SEC_KERNEL] = 0x10000000;
     se_aes_crypt_ctr(8, pdst, kernel_size, pdst, kernel_size, &hdr->sec_ctr[PKG2_SEC_KERNEL * 0x10]);
     pdst += kernel_size;
-    print("kernel encrypted\n");
 
     // INI1.
     u32 ini1_size = sizeof(pkg2_ini1_t);
@@ -171,7 +175,6 @@ void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info) {
     hdr->sec_size[PKG2_SEC_INI1] = ini1_size;
     hdr->sec_off[PKG2_SEC_INI1] = 0x14080000;
     se_aes_crypt_ctr(8, ini1, ini1_size, ini1, ini1_size, &hdr->sec_ctr[PKG2_SEC_INI1 * 0x10]);
-    print("INI1 encrypted\n");
 
     // Encrypt header.
     *(u32 *)hdr->ctr = 0x100 + sizeof(pkg2_hdr_t) + kernel_size + ini1_size;
@@ -338,7 +341,7 @@ int nca_patch(u8 * kipdata, u64 kipdata_len) {
     char pattern[8] = {0xE5, 0x07, 0x00, 0x32, 0xE0, 0x03, 0x16, 0xAA};
     char buf[0x10];
     memcpy(buf, kipdata+0x1C450, 0x10);
-    u32 * addr = memsearch(kipdata, kipdata_len, pattern, sizeof(pattern));
+    u32 * addr = (u32*)memsearch(kipdata, kipdata_len, pattern, sizeof(pattern));
     int ret=0;
     int max_dist = 0x10;
     for(int i=0; i<max_dist; i++) {
@@ -354,12 +357,12 @@ int nca_patch(u8 * kipdata, u64 kipdata_len) {
 
 int kippatch_apply_set(u8 *kipdata, u64 kipdata_len, kippatchset_t *patchset) {
     char *patchFilter[] = { "nosigchk", "nocmac", "nogc", NULL };
-    
+
     if (!fopen("/ReiNX/nogc", "rb")) {
         patchFilter[2] = NULL;
         fclose();
     }
-    
+
     for (kippatch_t *p = patchset->patches; p && p->name; ++p) {
         int found = 0;
         for (char **filtname = patchFilter; filtname && *filtname; ++filtname) {

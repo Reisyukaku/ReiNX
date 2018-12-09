@@ -29,17 +29,4 @@
 
 #define PAYLOAD_ADDR 0xCFF00000
 
-// TODO: Maybe find these with memsearch
-static const pk11_offs _pk11_offs[] = {
-    { KB_FIRMWARE_VERSION_100, 0x1900, 0x3FE0, { 2, 1, 0 }, 0x40014020, 0x8000D000, 1 }, //1.0.0
-    { KB_FIRMWARE_VERSION_200, 0x1900, 0x3FE0, { 0, 1, 2 }, 0x4002D000, 0x8000D000, 1 }, //2.0.0 - 2.3.0
-    { KB_FIRMWARE_VERSION_300, 0x1A00, 0x3FE0, { 0, 1, 2 }, 0x4002D000, 0x8000D000, 1 }, //3.0.0
-    { KB_FIRMWARE_VERSION_301, 0x1A00, 0x3FE0, { 0, 1, 2 }, 0x4002D000, 0x8000D000, 1 }, //3.0.1 - 3.0.2
-    { KB_FIRMWARE_VERSION_400, 0x1800, 0x3FE0, { 1, 2, 0 }, 0x4002B000, 0x4003B000, 0 }, //4.0.0 - 4.1.0
-    { KB_FIRMWARE_VERSION_500, 0x1900, 0x3FE0, { 1, 2, 0 }, 0x4002B000, 0x4003B000, 0 }, //5.0.0 - 5.0.2
-    { KB_FIRMWARE_VERSION_600, 0x1900, 0x3FE0, { 1, 2, 0 }, 0x4002B000, 0x4003D800, 0 }, //6.0.0
-    { KB_FIRMWARE_VERSION_620, 0x1900, 0x3FE0, { 1, 2, 0 }, 0x4002B000, 0x4003D800, 0 }, //6.2.0
-    { 0, 0, 0, 0, 0, 0, 0 } // End.
-};
-
 void firmware();

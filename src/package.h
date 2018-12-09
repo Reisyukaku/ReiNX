@@ -16,7 +16,6 @@
 
 #pragma once
 #include "hwinit.h"
-#include "hwinit/arm64.h"
 
 #define PKG2_MAGIC 0x31324B50
 #define PKG2_SEC_BASE 0x80000000
@@ -222,6 +221,8 @@ static u32 PRC_ID_RCV_600[] =
 };
 
 extern kippatchset_t kip_patches[];
+
+u8 *ReadBoot0(sdmmc_storage_t *storage);
 u8 *ReadPackage1Ldr(sdmmc_storage_t *storage);
 u8 *ReadPackage2(sdmmc_storage_t *storage);
 int kippatch_apply(u8 *kipdata, u64 kipdata_len, kippatch_t *patch);
