@@ -26,7 +26,8 @@ before_script:
     # Fix Git Submodules.
     - rm -rf NX_Sysmodules
     - git submodule update --init --recursive
-
+    - git remote add github git@github.com:Reisyukaku/ReiNX.git || if [ $? -eq 128 ]; then echo "Tried to add remote, already there."; else exit 1; fi
+    
     # Add SSH info.
     - mkdir ~/.ssh
     - eval $(ssh-agent -s)
@@ -98,5 +99,4 @@ sync_with_github:
     dependencies:
         - build
     script:
-        - git remote add github git@github.com:Reisyukaku/ReiNX.git
         - git push -u github $CI_COMMIT_REF_NAME 
