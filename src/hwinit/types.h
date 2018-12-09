@@ -19,6 +19,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 #define ALIGN(x, a) (((x) + (a) - 1) & ~((a) - 1))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
@@ -47,14 +48,14 @@ typedef volatile uint64_t vu64;
 typedef uintptr_t uPtr;
 
 enum KB_FIRMWARE_VERSION {
-	KB_FIRMWARE_VERSION_100 = 1,
-    KB_FIRMWARE_VERSION_200 = 1,
-	KB_FIRMWARE_VERSION_300 = 2,
-	KB_FIRMWARE_VERSION_301 = 3,
-	KB_FIRMWARE_VERSION_400 = 4,
-	KB_FIRMWARE_VERSION_500 = 5,
-    KB_FIRMWARE_VERSION_600 = 6,
-    KB_FIRMWARE_VERSION_620 = 7
+	KB_FIRMWARE_VERSION_100 = 0,
+    KB_FIRMWARE_VERSION_200 = 0,
+	KB_FIRMWARE_VERSION_300 = 1,
+	KB_FIRMWARE_VERSION_301 = 2,
+	KB_FIRMWARE_VERSION_400 = 3,
+	KB_FIRMWARE_VERSION_500 = 4,
+    KB_FIRMWARE_VERSION_600 = 5,
+    KB_FIRMWARE_VERSION_620 = 6
 };
 
 #endif

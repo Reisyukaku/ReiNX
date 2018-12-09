@@ -19,10 +19,25 @@
 
 #include "types.h"
 
+typedef struct _hnode
+{
+	int used;
+	u32 size;
+	struct _hnode *prev;
+	struct _hnode *next;
+} hnode_t;
+
+typedef struct _heap
+{
+	u32 start;
+	hnode_t *first;
+} heap_t;
+
 void heap_init(u32 base);
 void *malloc(u32 size);
-void *realloc(void * ptr, size_t size);
 void *calloc(u32 num, u32 size);
 void free(void *buf);
+void *memalign(u32 align, u32 size);
+void *realloc(void * ptr, size_t size);
 
 #endif

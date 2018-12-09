@@ -1,5 +1,7 @@
 /*
-* Copyright (c) 2018 Reisyukaku, naehrwert
+* Copyright (c) 2018 Reisyukaku
+* Copyright (c) 2018 naehrwert
+* Copyright (c) 2018 elise
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms and conditions of the GNU General Public License,
@@ -17,9 +19,9 @@
 #include "hwinit.h"
 #include "error.h"
 #include "bootloader.h"
-
+#include "package.h"
 void check_sku() {
-    if (FUSE(FUSE_SKU) != 0x83)
+    if (FUSE(0x110) != 0x83)
         panic();
 }
 
@@ -27,7 +29,7 @@ u32 get_unknown_config() {
     u32 res = 0;
     u32 deviceInfo = FUSE(FUSE_RESERVED_ODMX(4));
     u32 config = ((deviceInfo & 4u) >> 2) | 2 * ((deviceInfo & 0x100u) >> 8);
-    
+
     if(config == 1)
         return 0;
     if(config == 2)
@@ -40,7 +42,7 @@ u32 get_unknown_config() {
 u32 get_unit_type() {
     u32 deviceInfo = FUSE(FUSE_RESERVED_ODMX(4));
     u32 deviceType = deviceInfo & 3 | 4 * ((deviceInfo & 0x200u) >> 9);
-    
+
     if(deviceType == 3)
         return 0;
     if(deviceType == 4)
@@ -52,76 +54,115 @@ void check_config_fuses() {
     u32 config = get_unknown_config();
     u32 unitType = get_unit_type();
     u32 bromVer = FUSE(FUSE_SOC_SPEEDO_1);
-    
+
     if (config == 3 || unitType == 2 || bromVer < 0x1F)
         panic();
 }
 
-int keygen(u8 *keyblob, u32 fwVer, void *tsec_fw) {
-    u8 tmp[0x10];
-
-    se_key_acc_ctrl(0x0D, 0x15);
-    se_key_acc_ctrl(0x0E, 0x15);
-
-    // Get TSEC key.
-    if (tsec_query(tmp, 1, tsec_fw) < 0)
-        return 0;
-
-    se_aes_key_set(0x0D, tmp, 0x10);
-
-    // Derive keyblob keys from TSEC+SBK.
-    se_aes_crypt_block_ecb(0x0D, 0x00, tmp, keyblob_keyseeds[0]);
-    se_aes_unwrap_key(0x0F, 0x0E, tmp);
-    se_aes_crypt_block_ecb(0xD, 0x00, tmp, keyblob_keyseeds[fwVer-1]);
-    se_aes_unwrap_key(0x0D, 0x0E, tmp);
-
-    // Clear SBK
-    se_aes_key_clear(0x0E);
-
-    se_aes_crypt_block_ecb(0x0D, 0, tmp, cmac_keyseed);
-    se_aes_unwrap_key(0x0B, 0x0D, cmac_keyseed);
-
-    // Decrypt keyblob and set keyslots.
-    se_aes_crypt_ctr(0x0D, keyblob + 0x20, 0x90, keyblob + 0x20, 0x90, keyblob + 0x10);
-    if(fwVer < KB_FIRMWARE_VERSION_620) 
-        se_aes_key_set(0x0B, keyblob + 0x20 + 0x80, 0x10); // Package1 key
-    se_aes_key_set(0x0C, keyblob + 0x20, 0x10);
-    se_aes_key_set(0x0D, keyblob + 0x20, 0x10);
-
-    se_aes_crypt_block_ecb(0x0C, 0, tmp, master_keyseed_retail);
-
-    switch (fwVer) {
-        //case KB_FIRMWARE_VERSION_100:
-        case KB_FIRMWARE_VERSION_200:
-        case KB_FIRMWARE_VERSION_300:
-        case KB_FIRMWARE_VERSION_301:
-            se_aes_unwrap_key(0x0D, 0x0F, console_keyseed);
-            se_aes_unwrap_key(0x0C, 0x0C, master_keyseed_retail);
-        break;
-
-        case KB_FIRMWARE_VERSION_400:
-            se_aes_unwrap_key(0x0D, 0x0F, console_keyseed_4xx);
-            se_aes_unwrap_key(0x0F, 0x0F, console_keyseed);
-            se_aes_unwrap_key(0x0E, 0x0C, master_keyseed_4xx);
-            se_aes_unwrap_key(0x0C, 0x0C, master_keyseed_retail);
-        break;
-
-        case KB_FIRMWARE_VERSION_500:
-        case KB_FIRMWARE_VERSION_600:
-        case KB_FIRMWARE_VERSION_620:
-        default:
-            se_aes_unwrap_key(0x0A, 0x0F, console_keyseed_4xx);
-            se_aes_unwrap_key(0x0F, 0x0F, console_keyseed);
-            se_aes_unwrap_key(0x0E, 0x0C, master_keyseed_4xx);
-            se_aes_unwrap_key(0x0C, 0x0C, master_keyseed_retail);
-        break;
+int keygen(u8 *keyblob, u32 fwVer, void * pkg1, pk11_offs * offs) {
+    u8 tmp[0x20];
+    int sp = fwVer >= KB_FIRMWARE_VERSION_620;
+    tsec_ctxt_t tsec_ctxt;
+    tsec_ctxt.key_ver = 1;
+    tsec_ctxt.fw = pkg1 + offs->tsec_off;
+    tsec_ctxt.pkg1 = pkg1;
+    tsec_ctxt.pkg11_off = offs->pkg11_off;
+    tsec_ctxt.secmon_base = offs->secmon_base;
+    tsec_ctxt.size = sp ? 0x2900 : 0xF00;
+    
+    se_key_acc_ctrl(0xE, 0x15);
+    se_key_acc_ctrl(0xD, 0x15);
+    
+    if (sp) {
+        print("Going to emulate TSEC\nSize: 0x%x\nLoc: 0x%x\nOff: 0x%x\n", tsec_ctxt.size, tsec_ctxt.fw-tsec_ctxt.pkg1, tsec_ctxt.pkg11_off);
+        u8 *tsec_paged = (u8 *)page_alloc(3);
+        memcpy(tsec_paged, (void *)tsec_ctxt.fw, tsec_ctxt.size);
+        print("Copied, emulaing tsec\n");
     }
 
-    // Package2 key
-    if(fwVer < KB_FIRMWARE_VERSION_620){
-        se_key_acc_ctrl(0x08, 0x15);
-        se_aes_unwrap_key(0x08, 0x0C, key8_keyseed);
+    int retries = 0;
+    int ret = tsec_query(tmp, fwVer, &tsec_ctxt);
+    while (ret < 0)
+    {
+        print("Failed to keygen, retrying\n");
+        memset(tmp, 0x00, 0x20);
+        if (++retries > 3)
+            return 0;
+        ret = tsec_query(tmp, fwVer, &tsec_ctxt);
     }
+    
+    if(sp) {
+        // Set TSEC key.
+        se_aes_key_set(12, tmp, 0x10);
+
+        // Derive keyblob keys from TSEC+SBK.
+        se_aes_crypt_block_ecb(13, 0, tmp, keyblob_keyseeds[0]);
+        se_aes_unwrap_key(15, 14, tmp);
+        
+        // Set TSEC root key.
+        se_aes_key_set(13, tmp + 0x10, 0x10);
+
+        // Package2 key.
+        se_aes_key_set(8, tmp + 0x10, 0x10);
+        se_aes_unwrap_key(8, 8, new_master_keyseed);
+        se_aes_unwrap_key(8, 8, pre400_master_keyseed);
+        se_aes_unwrap_key(8, 8, pk21_keyseed);
+    } else {
+      se_key_acc_ctrl(13, 0x15);
+  		se_key_acc_ctrl(14, 0x15);
+
+  		// Set TSEC key.
+  		se_aes_key_set(13, tmp, 0x10);
+
+  		// Derive keyblob keys from TSEC+SBK.
+  		se_aes_crypt_block_ecb(13, 0, tmp, keyblob_keyseeds[0]);
+  		se_aes_unwrap_key(15, 14, tmp);
+  		se_aes_crypt_block_ecb(13, 0, tmp, keyblob_keyseeds[fwVer]);
+  		se_aes_unwrap_key(13, 14, tmp);
+
+  		// Clear SBK.
+  		se_aes_key_clear(14);
+
+  		se_aes_crypt_block_ecb(13, 0, tmp, cmac_keyseed);
+  		se_aes_unwrap_key(11, 13, cmac_keyseed);
+
+  		// Decrypt keyblob and set keyslots.
+  		se_aes_crypt_ctr(13, keyblob + 0x20, 0x90, keyblob + 0x20, 0x90, keyblob + 0x10);
+  		se_aes_key_set(11, keyblob + 0x20 + 0x80, 0x10); // Package1 key.
+  		se_aes_key_set(12, keyblob + 0x20, 0x10);
+  		se_aes_key_set(13, keyblob + 0x20, 0x10);
+
+  		se_aes_crypt_block_ecb(12, 0, tmp, pre400_master_keyseed);
+
+  		switch (fwVer)
+  		{
+            case KB_FIRMWARE_VERSION_200:
+            case KB_FIRMWARE_VERSION_300:
+            case KB_FIRMWARE_VERSION_301:
+                se_aes_unwrap_key(13, 15, console_keyseed);
+                se_aes_unwrap_key(12, 12, pre400_master_keyseed);
+                break;
+            case KB_FIRMWARE_VERSION_400:
+                se_aes_unwrap_key(13, 15, console_keyseed_4xx);
+                se_aes_unwrap_key(15, 15, console_keyseed);
+                se_aes_unwrap_key(14, 12, pre620_master_keyseed);
+                se_aes_unwrap_key(12, 12, pre400_master_keyseed);
+                break;
+            case KB_FIRMWARE_VERSION_500:
+            case KB_FIRMWARE_VERSION_600:
+                se_aes_unwrap_key(10, 15, console_keyseed_4xx);
+                se_aes_unwrap_key(15, 15, console_keyseed);
+                se_aes_unwrap_key(14, 12, pre620_master_keyseed);
+                se_aes_unwrap_key(12, 12, pre400_master_keyseed);
+                break;
+  		}
+
+  		// Package2 key.
+  		se_key_acc_ctrl(8, 0x15);
+  		se_aes_unwrap_key(8, 12, pk21_keyseed);
+    }
+
+    return 1;
 }
 
 void mbist_workaround() {
@@ -222,11 +263,11 @@ void setup() {
     config_oscillators();
     APB_MISC(0x40) = 0;
     config_gpios();
-    
+
     if (get_unit_type() == 0) {
         // TODO: devunit sub_40018D90
     }
-    
+
     clock_enable_cl_dvfs();
     clock_enable_i2c(I2C_1);
     clock_enable_i2c(I2C_5);
@@ -260,19 +301,19 @@ void setup() {
     mc_config_carveout();
 
     sdram_init();
-    
+
     sdram_lp0_save_params(sdram_get_params());
-    
+
     // Check if power off from HOS and shutdown
-    if (i2c_recv_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_IRQTOP) & MAX77620_IRQ_TOP_RTC_MASK) 
+    if (i2c_recv_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_IRQTOP) & MAX77620_IRQ_TOP_RTC_MASK)
         i2c_send_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_ONOFFCNFG1, MAX77620_ONOFFCNFG1_PWR_OFF);
 
 }
 
-void bootloader() { 
+void bootloader() {
     mbist_workaround();
     clock_enable_se();
-    
+
     // This makes fuse registers visible
     clock_enable_fuse(0x01);
 
@@ -286,7 +327,7 @@ void bootloader() {
 
     // Setup memory controllers
     mc_enable();
-    
+
     // Pre-Firmware setup
     setup();
 }

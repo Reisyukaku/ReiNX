@@ -1,35 +1,23 @@
 /*
-* Copyright (c) 2018 naehrwert
-*
-* This program is free software; you can redistribute it and/or modify it
-* under the terms and conditions of the GNU General Public License,
-* version 2, as published by the Free Software Foundation.
-*
-* This program is distributed in the hope it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-* more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ * Copyright (c) 2018 naehrwert
+ * Copyright (c) 2018 M4xw
+  * Copyright (c) 2018 Reisyukaku
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #include <string.h>
 #include "heap.h"
-
-typedef struct _hnode
-{
-	int used;
-	u32 size;
-	struct _hnode *prev;
-	struct _hnode *next;
-} hnode_t;
-
-typedef struct _heap
-{
-	u32 start;
-	hnode_t *first;
-} heap_t;
 
 static void _heap_create(heap_t *heap, u32 start)
 {
@@ -37,12 +25,12 @@ static void _heap_create(heap_t *heap, u32 start)
 	heap->first = NULL;
 }
 
-static u32 _heap_alloc(heap_t *heap, u32 size)
+static u32 _heap_alloc(heap_t *heap, u32 size, u32 alignment)
 {
 	hnode_t *node, *new;
 	int search = 1;
 
-	size = ALIGN(size, 0x10);
+	size = ALIGN(size, alignment);
 
 	if (!heap->first)
 	{
@@ -110,16 +98,35 @@ static void _heap_free(heap_t *heap, u32 addr)
 	}
 }
 
-static heap_t _heap;
+heap_t _heap;
 
-void heap_init(u32 base) {
+void heap_init(u32 base)
+{
 	_heap_create(&_heap, base);
 }
 
-void *malloc(u32 size) {
-	return (void *)_heap_alloc(&_heap, size);
+void *malloc(u32 size)
+{
+	return (void *)_heap_alloc(&_heap, size, 0x10);
 }
 
+void *memalign(u32 align, u32 size)
+{
+	return (void *)_heap_alloc(&_heap, size, align);
+}
+
+void *calloc(u32 num, u32 size)
+{
+	void *res = (void *)_heap_alloc(&_heap, num * size, 0x10);
+	memset(res, 0, num * size);
+	return res;
+}
+
+void free(void *buf)
+{
+	if ((buf != NULL) || ((u32)buf > (_heap.start - 1)))
+		_heap_free(&_heap, (u32)buf);
+}
 void *realloc (void * ptr, size_t size) {
 	hnode_t *node = (hnode_t *) ptr - 1;
 	void *new = malloc(size);
@@ -128,15 +135,4 @@ void *realloc (void * ptr, size_t size) {
 		free(ptr);
 	}
 	return new;
-}
-
-void *calloc(u32 num, u32 size) {
-	void *res = (void *)_heap_alloc(&_heap, num * size);
-	memset(res, 0, num * size);
-	return res;
-}
-
-void free(void *buf) {
-	if (buf != NULL)
-		_heap_free(&_heap, (u32)buf);
 }
