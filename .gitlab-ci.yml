@@ -51,6 +51,9 @@ build:
 
 publish_nightly:
     stage: deploy
+    only:
+        - master
+        - tags
     dependencies:
         - build
     script:
@@ -86,3 +89,14 @@ publish_nightly:
         - rm /tmp/reinx_build_push_cookie_jar
         - rm /tmp/reinx_build_push_token
         - rm /tmp/reinx_build_push_data
+
+sync_with_github:
+    stage: deploy
+    only:
+        - master
+        - tags
+    dependencies:
+        - build
+    script:
+        - git remote add github git@github.com:Reisyukaku/ReiNX.git
+        - git push -u github $CI_COMMIT_REF_NAME 
