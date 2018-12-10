@@ -64,23 +64,20 @@ publish_nightly:
     script:
         - zip -r reinx-nightly-$CI_COMMIT_SHA.zip ReiNX-Build
         
-        # Create Batch SFTP files to upload to Pantheon.
-        - echo "put reinx-nightly-$CI_COMMIT_SHA.zip" > /tmp/reinx_build_push_data
-        
         # These weird YAML syntaxes are to allow special character in the commands.
         - >
-          sftp -b /tmp/reinx_build_push_data -o Port=2222 dev.2a4a89cb-37c7-4cd7-9b54-1e4df7504fe7@appserver.dev.2a4a89cb-37c7-4cd7-9b54-1e4df7504fe7.drush.in:files/builds
+          scp reinx-nightly-$CI_COMMIT_SHA.zip  $WEBSERVER_USER@$WEBSERVER:/data/reinx-guide/files/builds
 
         # Create cookie file for our upcoming transfer or curl may throw an error.
         - touch /tmp/reinx_build_push_cookie_jar
 
         # Cookie for an admin must be created and there is no default REST API for this.
         - >
-          curl -X POST $BASE_URL/user/login -H 'Authorization: Basic cmVpbng6Z3VpZGU=' -H 'cache-control: no-cache'   -H 'content-type: application/x-www-form-urlencoded'   --data "$DRUPAL_LOGIN_POST_DATA" -b /tmp/reinx_build_push_cookie_jar   -c /tmp/reinx_build_push_cookie_jar
+          curl -X POST $BASE_URL/user/login -H 'cache-control: no-cache'   -H 'content-type: application/x-www-form-urlencoded'   --data "$DRUPAL_LOGIN_POST_DATA" -b /tmp/reinx_build_push_cookie_jar   -c /tmp/reinx_build_push_cookie_jar
         
         # We also need CSRF Token.
         - >
-          curl -X GET $BASE_URL/rest/session/token -H 'Authorization: Basic cmVpbng6Z3VpZGU=' -H 'cache-control: no-cache' -b /tmp/reinx_build_push_cookie_jar -c /tmp/reinx_build_push_cookie_jar > /tmp/reinx_build_push_token
+          curl -X GET $BASE_URL/rest/session/token -H 'cache-control: no-cache' -b /tmp/reinx_build_push_cookie_jar -c /tmp/reinx_build_push_cookie_jar > /tmp/reinx_build_push_token
 
         # Print Debug info for node JSON.
         - >
@@ -88,7 +85,7 @@ publish_nightly:
 
         # Create build node.
         - >
-          curl -X POST $BASE_URL/node?_format=hal_json -H 'Authorization: Basic cmVpbng6Z3VpZGU=' -H 'Content-type: application/hal+json' -H 'cache-control: no-cache'   -H "X-CSRF-Token: $(cat /tmp/reinx_build_push_token)" -b /tmp/reinx_build_push_cookie_jar   -c /tmp/reinx_build_push_cookie_jar   --data-binary "{\"_links\" : { \"type\" : { \"href\" : \"$BASE_URL/rest/type/node/build\"} },\"type\" : [{\"target_id\":\"build\"}],\"title\" : [{ \"value\" : \"$CI_COMMIT_TITLE\" }],\"field_build_download\" : [{ \"uri\" : \"$BASE_URL/sites/default/files/builds/reinx-nightly-$CI_COMMIT_SHA.zip\" }],\"field_commit_hash\" : [{ \"value\" : \"$CI_COMMIT_SHA\" }],\"field_branch\" : [{ \"value\" : \"$CI_COMMIT_REF_NAME\" }]}"
+          curl -X POST $BASE_URL/node?_format=hal_json -H 'Content-type: application/hal+json' -H 'cache-control: no-cache'   -H "X-CSRF-Token: $(cat /tmp/reinx_build_push_token)" -b /tmp/reinx_build_push_cookie_jar   -c /tmp/reinx_build_push_cookie_jar   --data-binary "{\"_links\" : { \"type\" : { \"href\" : \"$BASE_URL/rest/type/node/build\"} },\"type\" : [{\"target_id\":\"build\"}],\"title\" : [{ \"value\" : \"$CI_COMMIT_TITLE\" }],\"field_build_download\" : [{ \"uri\" : \"$BASE_URL/sites/default/files/builds/reinx-nightly-$CI_COMMIT_SHA.zip\" }],\"field_commit_hash\" : [{ \"value\" : \"$CI_COMMIT_SHA\" }],\"field_branch\" : [{ \"value\" : \"$CI_COMMIT_REF_NAME\" }]}"
         
         # Clean up for security's sake.
         - rm /tmp/reinx_build_push_cookie_jar
