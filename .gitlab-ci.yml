@@ -102,4 +102,5 @@ sync_with_github:
         - tags
     script:
         - git checkout master
+        - git pull
         - git push -u github master
