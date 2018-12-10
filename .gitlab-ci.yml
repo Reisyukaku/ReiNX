@@ -1,6 +1,7 @@
 image: docker:stable
 
 stages:
+    - sync
     - build
     - deploy
 
@@ -95,11 +96,10 @@ publish_nightly:
         - rm /tmp/reinx_build_push_data
 
 sync_with_github:
-    stage: deploy
+    stage: sync
     only:
         - master
         - tags
-    dependencies:
-        - build
     script:
-        - git push -u github $CI_COMMIT_REF_NAME 
+        - git checkout master
+        - git push -u github master
