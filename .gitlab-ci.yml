@@ -23,11 +23,6 @@ before_script:
     - apk --no-cache add openssl
     - apk --no-cache add openssh-client
 
-    # Fix Git Submodules.
-    - rm -rf NX_Sysmodules
-    - git submodule update --init --recursive
-    - git remote add github git@github.com:Reisyukaku/ReiNX.git || if [ $? -eq 128 ]; then echo "Tried to add remote, already there."; else exit 1; fi
-    
     # Add SSH info.
     - mkdir ~/.ssh
     - eval $(ssh-agent -s)
@@ -35,6 +30,14 @@ before_script:
     - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
     - mkdir -p ~/.ssh
     - chmod 700 ~/.ssh
+
+    # Fix Git Submodules.
+    - rm -rf NX_Sysmodules
+    - git submodule update --init --recursive
+    - git remote add github git@github.com:Reisyukaku/ReiNX.git || if [ $? -eq 128 ]; then echo "Tried to add remote, already there."; else exit 1; fi
+    - git fetch github
+    - git status
+    - echo $CI_COMMIT_REF_NAME
 
     # Provide information for debugging.
     - tree
