@@ -253,7 +253,7 @@ void patchKernel(pkg2_hdr_t *pkg2){
     if(!customKern) {
         u32 crc = crc32c(pkg2->data, pkg2->sec_size[PKG2_SEC_KERNEL]);
         uPtr kern = (uPtr)&pkg2->data;
-        uPtr sendOff, recvOff, codeRcvOff, codeSndOff, svcVerifOff, svcDebugOff, ver, peek, poke;
+        uPtr sendOff, recvOff, codeRcvOff, codeSndOff, svcVerifOff, svcDebugOff, ver;
         switch(crc){
             case 0x427f2647:{   //1.0.0
                 svcVerifOff = 0x3764C;
@@ -312,8 +312,6 @@ void patchKernel(pkg2_hdr_t *pkg2){
                 recvOff = 0x28DAC;
                 codeSndOff = 8;
                 codeRcvOff = 8;
-                peek = 0x42D3C;
-                poke = 0x42E00;
                 ver = 5;
                 break;
             }
@@ -324,8 +322,6 @@ void patchKernel(pkg2_hdr_t *pkg2){
                 recvOff = 0x29B6C;
                 codeSndOff = 0x10;
                 codeRcvOff = 0x10;
-                peek = 0x44E84;
-                poke = 0x44F48;
                 ver = 6;
                 break;
             }
@@ -355,10 +351,6 @@ void patchKernel(pkg2_hdr_t *pkg2){
         if (fopen("/ReiNX/debug", "rb")) {
             fclose();
             *(vu32*)(kern + svcDebugOff) = _MOVZX(8, 1, 0);
-        }
-        if(peek && poke) {
-            memcpy((void*)(kern + peek), peekPayload, sizeof(peekPayload));
-            memcpy((void*)(kern + poke), pokePayload, sizeof(pokePayload));
         }
 
         end:;
