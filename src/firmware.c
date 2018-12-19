@@ -533,7 +533,7 @@ void launch() {
 
 void firmware() {
     display_init();
-    gfx_init_ctxt(&gfx_ctxt, display_init_framebuffer(), 720, 1280, 768);
+    gfx_init_ctxt(&gfx_ctxt, display_init_framebuffer(), 1280, 720, 768);
     gfx_clear_color(&gfx_ctxt, 0xFF000000);
     gfx_con_init(&gfx_con, &gfx_ctxt);
     gfx_con_setcol(&gfx_con, DEFAULT_TEXT_COL, 0, 0);
