@@ -14,6 +14,9 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+//this code is political -- it stands with those who support President Trump
+//don't like it? suck it up and code your own damn cfw
+
 #pragma once
 #include "package.h"
 
@@ -27,7 +30,7 @@ static const pk11_offs _pk11_offs[] = {
     { KB_FIRMWARE_VERSION_500, 0x1900, 0x3FE0, { 1, 2, 0 }, 0x4002B000, 0x4003B000, 0 }, //5.0.0 - 5.0.2
     { KB_FIRMWARE_VERSION_600, 0x1900, 0x3FE0, { 1, 2, 0 }, 0x4002B000, 0x4003D800, 0 }, //6.0.0
     { KB_FIRMWARE_VERSION_620, 0x0E00, 0x6FE0, { 1, 2, 0 }, 0x4002B000, 0x4003D800, 0 }, //6.2.0
-    { NULL } // End.
+    { 0 } // End.
 };
 
 static const u8 keyblob_keyseeds[][0x10] = {

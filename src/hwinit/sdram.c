@@ -495,7 +495,7 @@ const void *sdram_get_params()
 #ifdef CONFIG_SDRAM_COMPRESS_CFG
 	u8 *buf = (u8 *)0x40030000;
 	LZ_Uncompress(_dram_cfg_lz, buf, sizeof(_dram_cfg_lz));
-	sdram_params = (const void *)&buf[sizeof(sdram_params_t) * _get_sdram_id()];
+	sdram_params = (void *)&buf[sizeof(sdram_params_t) * _get_sdram_id()];
 #else
 	sdram_params = _dram_cfgs[_get_sdram_id()];
 #endif
