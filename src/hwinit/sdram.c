@@ -490,15 +490,22 @@ break_nousleep:
 
 const void *sdram_get_params()
 {
-	//TODO: sdram_id should be in [0, 7].
+    sdram_params_t *sdram_params;
 
 #ifdef CONFIG_SDRAM_COMPRESS_CFG
 	u8 *buf = (u8 *)0x40030000;
 	LZ_Uncompress(_dram_cfg_lz, buf, sizeof(_dram_cfg_lz));
-	return (const void *)&buf[sizeof(sdram_params_t) * _get_sdram_id()];
+	sdram_params = (const void *)&buf[sizeof(sdram_params_t) * _get_sdram_id()];
 #else
-	return _dram_cfgs[_get_sdram_id()];
+	sdram_params = _dram_cfgs[_get_sdram_id()];
 #endif
+
+    sdram_params->boot_rom_patch_control = (1 << 31) | (((IPATCH_BASE + 4) - APB_MISC_BASE) / 4);
+	u32 addr = 0x10459E; // Bootrom address for warmboot sig check.
+	u32 data = 0x2000;   // MOV R0, #0.
+	sdram_params->boot_rom_patch_data = ((addr/2) << 16) | (data & 0xffff);
+    
+    return sdram_params;
 }
 
 void sdram_init()

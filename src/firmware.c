@@ -38,7 +38,7 @@ int drawSplash() {
 
 void patchFS(pkg2_kip1_info_t* ki) {
     print("Patching FS\n");
-    
+
     u8 kipHash[0x20];
 
     se_calc_sha256(&kipHash, ki->kip1, ki->size);
@@ -87,6 +87,35 @@ pkg2_kip1_info_t* find_by_tid(link_t* kip_list, u64 tid) {
             return ki;
     }
     return NULL;
+}
+
+void patchWarmboot(u32 warmbootBase, u32 fw) {
+    print("Patching Warmboot...\n");
+    if(!customWarmboot) {
+        uPtr *fuseCheck = NULL;
+        uPtr *segmentID = NULL;
+        switch(fw) {
+            case KB_FIRMWARE_VERSION_300:
+            case KB_FIRMWARE_VERSION_301: {
+                u8 segmentIDPat[] = {0x6B, 0x01, 0x00, 0x1A, 0x18, 0x05, 0x9F};
+                segmentID = (uPtr*)(memsearch((void *)warmbootBase, 0x10000, segmentIDPat, sizeof(segmentIDPat)));
+            }
+            case KB_FIRMWARE_VERSION_200: {
+                u8 fuseCheckPat[] = {0x70, 0x01, 0x00, 0x1A, 0x20, 0x15, 0x9F};
+                fuseCheck = (uPtr*)(memsearch((void *)warmbootBase, 0x10000, fuseCheckPat, sizeof(fuseCheckPat)));
+                break;
+            }
+            default: {
+                u8 fuseCheckPat[] = {0xFF, 0x77, 0x6E, 0xEF, 0x00, 0xC3, 0x92};
+                u8 segmentIDPat[] = {0xF7, 0xFF, 0xDE, 0xDD, 0x24, 0x02, 0x28};
+                fuseCheck = (uPtr*)(memsearch((void *)warmbootBase, 0x10000, fuseCheckPat, sizeof(fuseCheckPat) + 0x4));
+                segmentID = (uPtr*)(memsearch((void *)warmbootBase, 0x10000, segmentIDPat, sizeof(segmentIDPat) + 0x4));
+            }
+        }
+        *fuseCheck = NOP_v7;
+        if(segmentID != NULL)
+            *segmentID = NOP_v7;
+    }
 }
 
 void patchSecmon(u32 secmonBase, u32 fw){
@@ -146,17 +175,6 @@ void patchSecmon(u32 secmonBase, u32 fw){
                 sha2_ptr = (uPtr*)(memsearch((void *)secmonBase, 0x10000, sha2Pattern, sizeof(sha2Pattern)));
                 break;
             }
-            case KB_FIRMWARE_VERSION_600: {
-                u8 verPattern[] = {0x00, 0x01, 0x00, 0x36, 0xFD, 0x7B, 0x41, 0xA9};
-                u8 hdrSigPattern[] = { 0x9A, 0xFF, 0xFF, 0x97, 0x80, 0x00, 0x00, 0x36};
-                u8 sha2Pattern[] = {0x81, 0x00, 0x80, 0x72, 0xB5, 0xFB, 0xFF, 0x97};
-
-                ver_ptr = (uPtr*)memsearch((void *)secmonBase, 0x10000, verPattern, sizeof(verPattern));
-                pk21_ptr = (uPtr*)((u32)ver_ptr - 0xC);
-                hdrsig_ptr = (uPtr*)(memsearch((void *)secmonBase, 0x10000, hdrSigPattern, sizeof(hdrSigPattern)) + 0x4);
-                sha2_ptr = (uPtr*)(memsearch((void *)secmonBase, 0x10000, sha2Pattern, sizeof(sha2Pattern)) + 0x4);
-                break;
-            }
             default:{
                 u8 verPattern[] = {0x00, 0x01, 0x00, 0x36, 0xFD, 0x7B, 0x41, 0xA9};
                 u8 hdrSigPattern[] = {0x9A, 0xFF, 0xFF, 0x97, 0x80, 0x00, 0x00, 0x36};
@@ -170,11 +188,11 @@ void patchSecmon(u32 secmonBase, u32 fw){
         }
 
         if (fw > KB_FIRMWARE_VERSION_200) {
-            *pk21_ptr = NOP;
+            *pk21_ptr = NOP_v8;
         };
-        *ver_ptr = NOP;
-        *hdrsig_ptr = NOP;
-        *sha2_ptr = NOP;
+        *ver_ptr = NOP_v8;
+        *hdrsig_ptr = NOP_v8;
+        *sha2_ptr = NOP_v8;
     }
 }
 
@@ -282,7 +300,7 @@ void patchKernel(pkg2_hdr_t *pkg2){
         *(vu32*)(kern + freeSpace + payloadSize) = _B(freeSpace + payloadSize, recvOff + codeRcvOff);
 
         //SVC patches
-        *(vu32*)(kern + svcVerifOff) = NOP;
+        *(vu32*)(kern + svcVerifOff) = NOP_v8;
         if (fopen("/ReiNX/debug", "rb")) {
             fclose();
             *(vu32*)(kern + svcDebugOff) = _MOVZX(8, 1, 0);
@@ -304,7 +322,7 @@ void patchKernelExtensions(link_t *kips){
     } else {
         patchFS(FS_module);
     }
-    
+
     // Load all KIPs.
     char **sysmods = NULL;
     size_t cnt = enumerateDir(&sysmods, "/ReiNX/sysmodules", "*.kip");
@@ -353,7 +371,7 @@ u8 loadFirm() {
     //Decrypt if needed
     if(pk11Offs->kb < KB_FIRMWARE_VERSION_620)
       se_aes_crypt_ctr(11, pkg11 + 0x20, pkg11_size, pkg11 + 0x20, pkg11_size, pkg11 + 0x10);
-  
+
     print("Unpacking pkg1\n");
     pkg1_unpack(pk11Offs, (u32)pkg11);
     PMC(APBDEV_PMC_SCRATCH1) = pk11Offs->warmboot_base;
@@ -361,7 +379,7 @@ u8 loadFirm() {
 
     //Read package2
     u8 *pkg2 = ReadPackage2(&storage);
-    
+
     // Unpack Package2.
     print("Unpacking package2...\n");
     pkg2_hdr_t *dec_pkg2 = unpackFirmwarePackage(pkg2);
@@ -369,13 +387,14 @@ u8 loadFirm() {
     pkg2_parse_kips(&kip1_info, dec_pkg2);
 
     // Patch firmware.
+    patchWarmboot(pk11Offs->warmboot_base, pk11Offs->kb);
     patchSecmon(pk11Offs->secmon_base, pk11Offs->kb);
     patchKernel(dec_pkg2);
     patchKernelExtensions(&kip1_info);
-    
+
     // Build Package2.
     buildFirmwarePackage(dec_pkg2->data, dec_pkg2->sec_size[PKG2_SEC_KERNEL], &kip1_info);
-    
+
     //We're done with SD now
     sdUnmount();
 }
@@ -416,7 +435,7 @@ void launch() {
             se_key_acc_ctrl(12, 0xFF);
             se_key_acc_ctrl(15, 0xFF);
     }
-    
+
     if(pk11Offs->kb < KB_FIRMWARE_VERSION_620){
         SE_lock();
     }else{
@@ -444,19 +463,19 @@ void launch() {
 
     // Disable display.
     display_end();
-    
+
     // Boot secmon and Wait for it get ready, if aplicable.
     if (smmu_is_used())
         smmu_exit();
     else
         cluster_boot_cpu0(pk11Offs->secmon_base);
-    
+
     while (!*SECMON_STATE_ADDR)
         usleep(1);
 
     // Signal to finish boot process.
     *BOOT_STATE_ADDR = (pk11Offs->kb < KB_FIRMWARE_VERSION_400 ? BOOT_DONE : BOOT_DONE_4X);
-    
+
     // Halt ourselves in waitevent state.
     while (1) FLOW_CTLR(0x4) = 0x50000000;
 }
@@ -467,7 +486,7 @@ void firmware() {
     gfx_clear_color(&gfx_ctxt, 0xFF000000);
     gfx_con_init(&gfx_con, &gfx_ctxt);
     gfx_con_setcol(&gfx_con, DEFAULT_TEXT_COL, 0, 0);
-    
+    u8 fo[] = {0xF0, 0xE0, 0xD0, 0x00};
     if (!sdMount()) {
         error("Failed to init SD card!\n");
         print("Press POWER to power off, or any other key to continue without SD.\n");
@@ -488,7 +507,7 @@ void firmware() {
     }
     SYSREG(AHB_AHB_SPARE_REG) = (volatile vu32)0xFFFFFF9F;
     PMC(APBDEV_PMC_SCRATCH49) = 0;
-
+    
     if(btn_read() & BTN_VOL_UP){
         if(fopen("/ReiNX/Recovery.bin", "rb") != 0) {
             fread((void*)PAYLOAD_ADDR, fsize(), 1);
@@ -502,7 +521,7 @@ void firmware() {
             btn_wait();
         }
     }
-    
+
     if (btn_read() & BTN_VOL_DOWN) {
         print("Booting verbosely\n");
     } else if (drawSplash()) {
