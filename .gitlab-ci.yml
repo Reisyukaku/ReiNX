@@ -98,5 +98,5 @@ sync_with_github:
         - tags
     script:
         - git checkout master
-        - git pull origin
+        - git pull origin master
         - git push -u github master
