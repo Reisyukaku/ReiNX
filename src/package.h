@@ -24,7 +24,8 @@
 
 #define INI1_MAGIC 0x31494E49
 
-#define NOP 0xD503201F
+#define NOP_v8 0xD503201F
+#define NOP_v7 0xE320F000
 #define ADRP(r, o) 0x90000000 | ((((o) >> 12) & 0x3) << 29) | ((((o) >> 12) & 0x1FFFFC) << 3) | ((r) & 0x1F)
 
 static u8 customSecmon = 0;

@@ -131,7 +131,7 @@ void pkg1_unpack(pk11_offs *offs, u32 pkg1Off) {
 
 void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info) {
     u8 *pdst = (u8 *)0xA9800000;
-    
+
     // Signature.
     memset(pdst, 0, 0x100);
     pdst += 0x100;
@@ -347,7 +347,7 @@ int nca_patch(u8 * kipdata, u64 kipdata_len) {
     for(int i=0; i<max_dist; i++) {
         u32 op = addr[i];
         if((op & 0xFC000000)==0x94000000) { //is a BL op
-            addr[i] = NOP;
+            addr[i] = NOP_v8;
             ret=1;
             break;
         }

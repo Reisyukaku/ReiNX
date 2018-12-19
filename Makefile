@@ -71,3 +71,4 @@ $(dir_build)/%.o: $(dir_source)/%.c
 $(dir_build)/%.o: $(dir_source)/%.s
 	@mkdir -p "$(@D)"
 	$(CC) $(CFLAGS) -c $< -o $@
+
