@@ -89,29 +89,16 @@ pkg2_kip1_info_t* find_by_tid(link_t* kip_list, u64 tid) {
     return NULL;
 }
 
-void patchWarmboot(u32 warmbootBase, u32 fw) {
+void patchWarmboot(u32 warmbootBase) {
     print("Patching Warmboot...\n");
     if(!customWarmboot) {
         uPtr *fuseCheck = NULL;
         uPtr *segmentID = NULL;
-        switch(fw) {
-            case KB_FIRMWARE_VERSION_300:
-            case KB_FIRMWARE_VERSION_301: {
-                u8 segmentIDPat[] = {0x6B, 0x01, 0x00, 0x1A, 0x18, 0x05, 0x9F};
-                segmentID = (uPtr*)(memsearch((void *)warmbootBase, 0x10000, segmentIDPat, sizeof(segmentIDPat)));
-            }
-            case KB_FIRMWARE_VERSION_200: {
-                u8 fuseCheckPat[] = {0x70, 0x01, 0x00, 0x1A, 0x20, 0x15, 0x9F};
-                fuseCheck = (uPtr*)(memsearch((void *)warmbootBase, 0x10000, fuseCheckPat, sizeof(fuseCheckPat)));
-                break;
-            }
-            default: {
-                u8 fuseCheckPat[] = {0xFF, 0x77, 0x6E, 0xEF, 0x00, 0xC3, 0x92};
-                u8 segmentIDPat[] = {0xF7, 0xFF, 0xDE, 0xDD, 0x24, 0x02, 0x28};
-                fuseCheck = (uPtr*)(memsearch((void *)warmbootBase, 0x10000, fuseCheckPat, sizeof(fuseCheckPat) + 0x4));
-                segmentID = (uPtr*)(memsearch((void *)warmbootBase, 0x10000, segmentIDPat, sizeof(segmentIDPat) + 0x4));
-            }
-        }
+        u8 fuseCheckPat[] = {0x44, 0x12, 0x80, 0xE5};
+        u8 segmentIDPat[] = {0x60, 0x03, 0x91, 0xE5};
+        fuseCheck = (uPtr*)(memsearch((void *)warmbootBase, 0x1000, fuseCheckPat, sizeof(fuseCheckPat)) + 20);
+        segmentID = (uPtr*)(memsearch((void *)warmbootBase, 0x1000, segmentIDPat, sizeof(segmentIDPat)) + 12);
+        
         *fuseCheck = NOP_v7;
         if(segmentID != NULL)
             *segmentID = NOP_v7;
@@ -430,7 +417,7 @@ u8 loadFirm() {
     pkg2_parse_kips(&kip1_info, dec_pkg2);
 
     // Patch firmware.
-    patchWarmboot(pk11Offs->warmboot_base, pk11Offs->kb);
+    patchWarmboot(pk11Offs->warmboot_base);
     patchSecmon(pk11Offs->secmon_base, pk11Offs->kb);
     patchKernel(dec_pkg2);
     patchKernelExtensions(&kip1_info);
