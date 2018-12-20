@@ -516,7 +516,7 @@ void firmware() {
     gfx_clear_color(&gfx_ctxt, 0xFF000000);
     gfx_con_init(&gfx_con, &gfx_ctxt);
     gfx_con_setcol(&gfx_con, DEFAULT_TEXT_COL, 0, 0);
-    u8 fo[] = {0xF0, 0xE0, 0xD0, 0x00};
+    
     if (!sdMount()) {
         error("Failed to init SD card!\n");
         print("Press POWER to power off, or any other key to continue without SD.\n");
