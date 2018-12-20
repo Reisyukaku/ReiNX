@@ -90,7 +90,6 @@ publish_nightly:
         # Clean up for security's sake.
         - rm /tmp/reinx_build_push_cookie_jar
         - rm /tmp/reinx_build_push_token
-        - rm /tmp/reinx_build_push_data
 
 sync_with_github:
     stage: sync
@@ -99,5 +98,5 @@ sync_with_github:
         - tags
     script:
         - git checkout master
-        - git pull
+        - git pull origin master
         - git push -u github master
