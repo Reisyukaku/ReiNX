@@ -516,7 +516,7 @@ void firmware() {
     gfx_clear_color(&gfx_ctxt, 0xFF000000);
     gfx_con_init(&gfx_con, &gfx_ctxt);
     gfx_con_setcol(&gfx_con, DEFAULT_TEXT_COL, 0, 0);
-    u8 fo[] = {0xF0, 0xE0, 0xD0, 0x00};
+    
     if (!sdMount()) {
         error("Failed to init SD card!\n");
         print("Press POWER to power off, or any other key to continue without SD.\n");
@@ -542,6 +542,12 @@ void firmware() {
         if(fopen("/ReiNX/Recovery.bin", "rb") != 0) {
             fread((void*)PAYLOAD_ADDR, fsize(), 1);
             fclose();
+            if(!fopen("/ReiNX.bin", "rb")) {
+                memcpy((void *)0x82000000, (void *)0x40008000, 0x1ed58);
+            } else {
+                PMC(APBDEV_PMC_SCRATCH49) = 69;
+                fclose();
+            }
             sdUnmount();
             CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_V) |= 0x400; // Enable AHUB clock.
             CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_Y) |= 0x40;  // Enable APE clock.
