@@ -540,13 +540,14 @@ void firmware() {
     
     if(btn_read() & BTN_VOL_UP){
         if(fopen("/ReiNX/Recovery.bin", "rb") != 0) {
-
+            fclose();
             if(!fopen("/ReiNX.bin", "rb")) {
                 memcpy((void *)0x82000000, (void *)0x40008000, 0x1ed58);
             } else {
                 PMC(APBDEV_PMC_SCRATCH49) = 69;
                 fclose();
             }
+            fopen("/ReiNX/Recovery.bin", "rb");
             fread((void*)PAYLOAD_ADDR, fsize(), 1);
             fclose();
             sdUnmount();
