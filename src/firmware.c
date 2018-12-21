@@ -540,6 +540,7 @@ void firmware() {
     
     if(btn_read() & BTN_VOL_UP){
         if(fopen("/ReiNX/Recovery.bin", "rb") != 0) {
+            fread((void*)PAYLOAD_ADDR, fsize(), 1);
             fclose();
             if(!fopen("/ReiNX.bin", "rb")) {
                 memcpy((void *)0x82000000, (void *)0x40008000, 0x1ed58);
@@ -547,9 +548,6 @@ void firmware() {
                 PMC(APBDEV_PMC_SCRATCH49) = 69;
                 fclose();
             }
-            fopen("/ReiNX/Recovery.bin", "rb");
-            fread((void*)PAYLOAD_ADDR, fsize(), 1);
-            fclose();
             sdUnmount();
             CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_V) |= 0x400; // Enable AHUB clock.
             CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_Y) |= 0x40;  // Enable APE clock.
