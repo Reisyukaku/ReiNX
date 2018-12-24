@@ -1,5 +1,6 @@
 # ReiNX
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
+<a href="https://discord.gg/NxpeNwz"><img src="https://discordapp.com/api/guilds/465980502206054400/embed.png" alt="Discord Server" /></a>
 
 *The modular switch custom firmware*
 
