@@ -305,8 +305,9 @@ void setup() {
     sdram_lp0_save_params(sdram_get_params());
 
     // Check if power off from HOS and shutdown
-    if (i2c_recv_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_IRQTOP) & MAX77620_IRQ_TOP_RTC_MASK)
+    if (i2c_recv_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_IRQTOP) & MAX77620_IRQ_TOP_RTC_MASK) {
         i2c_send_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_ONOFFCNFG1, MAX77620_ONOFFCNFG1_PWR_OFF);
+    }
 
 }
 

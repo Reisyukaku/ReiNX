@@ -102,6 +102,8 @@ void patchWarmboot(u32 warmbootBase) {
         *fuseCheck = NOP_v7;
         if(segmentID != NULL)
             *segmentID = NOP_v7;
+    }else{
+        print("Using custom warmboot.\n");
     }
 }
 
@@ -235,6 +237,8 @@ void patchSecmon(u32 secmonBase, u32 fw){
         *ver_ptr = NOP_v8;
         *hdrsig_ptr = NOP_v8;
         *sha2_ptr = NOP_v8;
+    }else{
+        print("Using custom secmon.\n");
     }
 }
 
@@ -242,109 +246,42 @@ void patchKernel(pkg2_hdr_t *pkg2){
     print("Patching Kernel...\n");
     //Patch Kernel
     if(!customKern) {
-        u32 crc = crc32c(pkg2->data, pkg2->sec_size[PKG2_SEC_KERNEL]);
+        u8 hash[0x20];
+        se_calc_sha256(hash, pkg2->data, pkg2->sec_size[PKG2_SEC_KERNEL]);
         uPtr kern = (uPtr)&pkg2->data;
-        uPtr sendOff, recvOff, codeRcvOff, codeSndOff, svcVerifOff, svcDebugOff, ver;
-        switch(crc){
-            case 0x427f2647:{   //1.0.0
-                svcVerifOff = 0x3764C;
-                svcDebugOff = 0x44074;
-                sendOff = 0x23CC0;
-                recvOff = 0x219F0;
-                codeSndOff = 4;
-                codeRcvOff = 4;
-                ver = 0;
-                break;
+        uPtr sendOff, recvOff, codeRcvOff, codeSndOff, svcVerifOff, svcDebugOff;
+
+        int i; for(i = 0; i < sizeof(kernelInfo)/sizeof(KernelMeta); i++) {
+            if(memcmp(hash, kernelInfo[i].Hash, 0x20)) continue;
+            print("Patching kernel %d\n", i);
+            
+            //ID Send
+            uPtr freeSpace = getFreeSpace((void*)(kern+0x45000), 0x200, 0x20000) + 0x45000;                //Find area to write payload
+            print("Kernel Freespace: 0x%08X\n", freeSpace);
+            size_t payloadSize;
+            u32 *sndPayload = getSndPayload(i, &payloadSize);
+            *(vu32*)(kern + kernelInfo[i].SendOff) = _B(kernelInfo[i].SendOff, freeSpace);                                             //write hook to payload
+            memcpy((void*)(kern + freeSpace), sndPayload, payloadSize);                                    //Copy payload to free space
+            *(vu32*)(kern + freeSpace + payloadSize) = _B(freeSpace + payloadSize, kernelInfo[i].SendOff + kernelInfo[i].CodeSndOff);  //Jump back skipping the hook
+
+            //ID Receive
+            freeSpace += (payloadSize+4);
+            u32 *rcvPayload = getRcvPayload(i, &payloadSize);
+            *(vu32*)(kern + kernelInfo[i].RcvOff) = _B(kernelInfo[i].RcvOff, freeSpace);
+            memcpy((void*)(kern + freeSpace), rcvPayload, payloadSize);
+            *(vu32*)(kern + freeSpace + payloadSize) = _B(freeSpace + payloadSize, kernelInfo[i].RcvOff + kernelInfo[i].CodeRcvOff);
+
+            //SVC patches
+            *(vu32*)(kern + kernelInfo[i].SvcVerify) = NOP_v8;
+            if (fopen("/ReiNX/debug", "rb")) {
+                fclose();
+                *(vu32*)(kern + kernelInfo[i].SvcDebug) = _MOVZX(8, 1, 0);
             }
-            case 0xae19cf1b:{   //2.0.0
-                svcVerifOff = 0x54834;
-                svcDebugOff = 0x6086C;
-                sendOff = 0x3F134;
-                recvOff = 0x3D1A8;
-                codeSndOff = 4;
-                codeRcvOff = 4;
-                ver = 1;
-                break;
-            }
-            case 0x73c9e274:{   //3.0.0
-                svcVerifOff = 0x3BD24;
-                svcDebugOff = 0x483FC;
-                sendOff = 0x26080;
-                recvOff = 0x240F0;
-                codeSndOff = 4;
-                codeRcvOff = 4;
-                ver = 2;
-                break;
-            }
-            case 0xe0e8cdc4:{   //3.0.2
-                svcVerifOff = 0x3BD24;
-                svcDebugOff = 0x48414;
-                sendOff = 0x26080;
-                recvOff = 0x240F0;
-                codeSndOff = 4;
-                codeRcvOff = 4;
-                ver = 3;
-                break;
-            }
-            case 0x485d0157:{   //4.0.0
-                svcVerifOff = 0x41EB4;
-                svcDebugOff = 0x4EBFC;
-                sendOff = 0x2AF64;
-                recvOff = 0x28F6C;
-                codeSndOff = 8;
-                codeRcvOff = 4;
-                ver = 4;
-                break;
-            }
-            case 0xf3c363f2:{   //5.0.0
-                svcVerifOff = 0x45E6C;
-                svcDebugOff = 0x5513C;
-                sendOff = 0x2AD34;
-                recvOff = 0x28DAC;
-                codeSndOff = 8;
-                codeRcvOff = 8;
-                ver = 5;
-                break;
-            }
-            case 0x64ce1a44:{   //6.0.0
-                svcVerifOff = 0x47EA0;
-                svcDebugOff = 0x57548;
-                sendOff = 0x2BB8C;
-                recvOff = 0x29B6C;
-                codeSndOff = 0x10;
-                codeRcvOff = 0x10;
-                ver = 6;
-                break;
-            }
-            default:
-                error("Kernel not supported");
-                goto end;
+            
+            break;
         }
-
-        //ID Send
-        uPtr freeSpace = getFreeSpace((void*)(kern+0x45000), 0x200, 0x20000) + 0x45000;                //Find area to write payload
-        print("Kernel Freespace: 0x%08X\n", freeSpace);
-        size_t payloadSize;
-        u32 *sndPayload = getSndPayload(ver, &payloadSize);
-        *(vu32*)(kern + sendOff) = _B(sendOff, freeSpace);                                             //write hook to payload
-        memcpy((void*)(kern + freeSpace), sndPayload, payloadSize);                                    //Copy payload to free space
-        *(vu32*)(kern + freeSpace + payloadSize) = _B(freeSpace + payloadSize, sendOff + codeSndOff);  //Jump back skipping the hook
-
-        //ID Receive
-        freeSpace += (payloadSize+4);
-        u32 *rcvPayload = getRcvPayload(ver, &payloadSize);
-        *(vu32*)(kern + recvOff) = _B(recvOff, freeSpace);
-        memcpy((void*)(kern + freeSpace), rcvPayload, payloadSize);
-        *(vu32*)(kern + freeSpace + payloadSize) = _B(freeSpace + payloadSize, recvOff + codeRcvOff);
-
-        //SVC patches
-        *(vu32*)(kern + svcVerifOff) = NOP_v8;
-        if (fopen("/ReiNX/debug", "rb")) {
-            fclose();
-            *(vu32*)(kern + svcDebugOff) = _MOVZX(8, 1, 0);
-        }
-
-        end:;
+    }else{
+        print("Using custom kernel.\n");
     }
 }
 
@@ -369,6 +306,7 @@ void patchKernelExtensions(link_t *kips){
 }
 
 u8 loadFirm() {
+    print("%k\nSetting up HOS:\n%k", WHITE, DEFAULT_TEXT_COL);
     sdmmc_storage_t storage;
     sdmmc_t sdmmc;
 
@@ -400,11 +338,11 @@ u8 loadFirm() {
     u8 *keyblob = (u8 *)malloc(NX_EMMC_BLOCKSIZE);
     sdmmc_storage_read(&storage, 0x180000 / NX_EMMC_BLOCKSIZE + pk11Offs->kb, 1, keyblob);
     if(!keygen(keyblob, pk11Offs->kb, pkg1ldr, pk11Offs))
-      print("Failed to keygen...\n");
+        print("Failed to keygen...\n");
     free(keyblob);
     //Decrypt if needed
     if(pk11Offs->kb < KB_FIRMWARE_VERSION_620)
-      se_aes_crypt_ctr(11, pkg11 + 0x20, pkg11_size, pkg11 + 0x20, pkg11_size, pkg11 + 0x10);
+        se_aes_crypt_ctr(11, pkg11 + 0x20, pkg11_size, pkg11 + 0x20, pkg11_size, pkg11 + 0x10);
 
     print("Unpacking pkg1\n");
     pkg1_unpack(pk11Offs, (u32)pkg11);
@@ -421,6 +359,7 @@ u8 loadFirm() {
     pkg2_parse_kips(&kip1_info, dec_pkg2);
 
     // Patch firmware.
+    print("%k\nPatching HOS:\n%k", WHITE, DEFAULT_TEXT_COL);
     patchWarmboot(pk11Offs->warmboot_base);
     patchSecmon(pk11Offs->secmon_base, pk11Offs->kb);
     patchKernel(dec_pkg2);
@@ -448,6 +387,8 @@ static void SE_lock() {
 }
 
 void launch() {
+    print("%k\nLaunching HOS!\n%k", GREEN, DEFAULT_TEXT_COL);
+    
     se_aes_key_clear(0x8);
     se_aes_key_clear(0xB);
 
@@ -563,12 +504,11 @@ void firmware() {
     }
 
     if (btn_read() & BTN_VOL_DOWN) {
-        print("Booting verbosely\n");
+        print("%kWelcome to ReiNX %s!\n%k", WHITE, VERSION, DEFAULT_TEXT_COL);
     } else if (drawSplash()) {
         gfx_con.mute = 1;
     }
 
-    print("Welcome to ReiNX %s!\n", VERSION);
     loadFirm();
     launch();
 }
