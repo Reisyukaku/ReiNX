@@ -71,7 +71,11 @@ pkg2_hdr_t *unpackFirmwarePackage(u8 *data) {
     se_aes_crypt_ctr(8, hdr, sizeof(pkg2_hdr_t), hdr, sizeof(pkg2_hdr_t), hdr);
 
     if (hdr->magic != PKG2_MAGIC) {
-        error("Package2 Magic invalid!\n");
+        gfx_clear_color(&gfx_ctxt, 0xFF000000);
+        gfx_set_pos(&gfx_con, 10, 10);
+        gfx_con_setcol(&gfx_con, RED, 0, 0);
+        print("PKG2 Magic Invalid.\nThis is probably due to this ReiNX version not supporting your firmawre version\nCheck reinx.guide for the latest version!\n");
+        panic();
         return NULL;
     }
 
