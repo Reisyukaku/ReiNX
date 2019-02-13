@@ -15,6 +15,7 @@
 */
 
 #pragma once
+#include "fs.h"
 #include "package.h"
 
 // TODO: Maybe find these with memsearch

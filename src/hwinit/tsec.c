@@ -35,7 +35,6 @@ extern gfx_con_t gfx_con; */
 static int _tsec_dma_wait_idle()
 {
 	u32 timeout = get_tmr_ms() + 10000;
-
 	while (!(TSEC(TSEC_DMATRFCMD) & TSEC_DMATRFCMD_IDLE))
 		if (get_tmr_ms() > timeout)
 			return 0;
@@ -61,7 +60,6 @@ static int _tsec_dma_pa_to_internal_100(int not_imem, int i_offset, int pa_offse
 
 int tsec_query(u8 *tsec_keys, u8 kb, tsec_ctxt_t *tsec_ctxt)
 {
-    print("TSEC KB : %d\n", kb);
 	int res = 0;
 	u8 *fwbuf = NULL;
 	u32 *pdir, *car, *fuse, *pmc, *flowctrl, *se, *mc, *iram, *evec;
@@ -96,7 +94,7 @@ int tsec_query(u8 *tsec_keys, u8 kb, tsec_ctxt_t *tsec_ctxt)
 	else{
 		void * temp = malloc(0x3000);
 		temp = (void *)ALIGN((u32)temp, 0x100);
-		memcpy(temp, tsec_ctxt->fw, 0x2900);
+		memcpy(temp, tsec_ctxt->fw, tsec_ctxt->size);
 		tsec_ctxt->fw = temp;
 		TSEC(TSEC_DMATRFBASE) = (u32)tsec_ctxt->fw >> 8;
         free(temp);
@@ -119,7 +117,7 @@ int tsec_query(u8 *tsec_keys, u8 kb, tsec_ctxt_t *tsec_ctxt)
 		pdir = smmu_init_for_tsec();
 		print("initing secmon base\n");
 		smmu_init(tsec_ctxt->secmon_base);
-		print("enalbling smmu\n");
+		print("enabling smmu\n");
 		// Enable SMMU
 		if (!smmu_is_used())
 			smmu_enable();
@@ -169,12 +167,13 @@ int tsec_query(u8 *tsec_keys, u8 kb, tsec_ctxt_t *tsec_ctxt)
 	}
 	print("Executing TSEC\n");
 	//Execute firmware.
+    
 	HOST1X(0x3300) = 0x34C2E1DA;
 	TSEC(TSEC_STATUS) = 0;
 	TSEC(TSEC_BOOTKEYVER) = 1;
 	TSEC(TSEC_BOOTVEC) = 0;
 	TSEC(TSEC_CPUCTL) = TSEC_CPUCTL_STARTCPU;
-
+    
 	if (kb <= KB_FIRMWARE_VERSION_600)
 	{
 		if (!_tsec_dma_wait_idle())
@@ -183,12 +182,13 @@ int tsec_query(u8 *tsec_keys, u8 kb, tsec_ctxt_t *tsec_ctxt)
 			goto out_free;
 		}
 		u32 timeout = get_tmr_ms() + 2000;
-		while (!TSEC(TSEC_STATUS))
+		while (!TSEC(TSEC_STATUS)){
 			if (get_tmr_ms() > timeout)
 			{
 				res = -4;
 				goto out_free;
 			}
+        }
 		if (TSEC(TSEC_STATUS) != 0xB0B0B0B0)
 		{
 			res = -5;

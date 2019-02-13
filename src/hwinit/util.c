@@ -76,17 +76,3 @@ uPtr getFreeSpace(void *start, size_t space, size_t searchSize) {
     }
     return 0;
 }
-
-#define CRC32C_POLY 0x82F63B78
-u32 crc32c(const void *buf, u32 len)
-{
-	const u8 *cbuf = (const u8 *)buf;
-	u32 crc = 0xFFFFFFFF;
-	while (len--)
-	{
-		crc ^= *cbuf++;
-		for (int i = 0; i < 8; i++)
-			crc = crc & 1 ? (crc >> 1) ^ CRC32C_POLY : crc >> 1;
-	}
-	return ~crc;
-}

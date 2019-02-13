@@ -297,6 +297,9 @@ u32 *getSndPayload(u32 id, size_t *size) {
         case 6:
             *size = sizeof(PRC_ID_SND_600);
             ret = PRC_ID_SND_600;
+        case 7:
+            *size = sizeof(PRC_ID_SND_700);
+            ret = PRC_ID_SND_700;
             break;
     }
     return ret;
@@ -332,6 +335,10 @@ u32 *getRcvPayload(u32 id, size_t *size) {
         case 6:
             *size = sizeof(PRC_ID_RCV_600);
             ret = PRC_ID_RCV_600;
+            break;
+        case 7:
+            *size = sizeof(PRC_ID_RCV_700);
+            ret = PRC_ID_RCV_700;
             break;
     }
     return ret;

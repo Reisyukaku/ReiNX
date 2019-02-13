@@ -456,12 +456,14 @@ void launch() {
 }
 
 void firmware() {
+    //Init display
     display_init();
     gfx_init_ctxt(&gfx_ctxt, display_init_framebuffer(), 1280, 720, 768);
-    gfx_clear_color(&gfx_ctxt, 0xFF000000);
+    gfx_clear_color(&gfx_ctxt, BLACK);
     gfx_con_init(&gfx_con, &gfx_ctxt);
     gfx_con_setcol(&gfx_con, DEFAULT_TEXT_COL, 0, 0);
     
+    //Mount SD
     if (!sdMount()) {
         error("Failed to init SD card!\n");
         print("Press POWER to power off, or any other key to continue without SD.\n");
@@ -470,6 +472,7 @@ void firmware() {
         btn_wait();
     }
     
+    //Chainload ReiNX if applicable
     if(PMC(APBDEV_PMC_SCRATCH49) != 69 && fopen("/ReiNX.bin", "rb")) {
         fread((void*)PAYLOAD_ADDR, fsize(), 1);
         fclose();
@@ -483,6 +486,7 @@ void firmware() {
     SYSREG(AHB_AHB_SPARE_REG) = (volatile vu32)0xFFFFFF9F;
     PMC(APBDEV_PMC_SCRATCH49) = 0;
     
+    //Chainload recovery if applicable
     if(btn_read() & BTN_VOL_UP){
         if(fopen("/ReiNX/Recovery.bin", "rb") != 0) {
             fread((void*)PAYLOAD_ADDR, fsize(), 1);
@@ -503,12 +507,14 @@ void firmware() {
         }
     }
 
+    //Determine if booting in verbose mode
     if (btn_read() & BTN_VOL_DOWN) {
         print("%kWelcome to ReiNX %s!\n%k", WHITE, VERSION, DEFAULT_TEXT_COL);
     } else if (drawSplash()) {
         gfx_con.mute = 1;
     }
 
+    //Setup cfw
     loadFirm();
     launch();
 }

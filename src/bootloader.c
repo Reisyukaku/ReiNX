@@ -68,7 +68,9 @@ int keygen(u8 *keyblob, u32 fwVer, void * pkg1, pk11_offs * offs) {
     tsec_ctxt.pkg1 = pkg1;
     tsec_ctxt.pkg11_off = offs->pkg11_off;
     tsec_ctxt.secmon_base = offs->secmon_base;
-    tsec_ctxt.size = sp ? 0x2900 : 0xF00;
+    if(fwVer <= KB_FIRMWARE_VERSION_620) tsec_ctxt.size = 0xF00;
+    if(fwVer == KB_FIRMWARE_VERSION_620) tsec_ctxt.size = 0x2900;
+    if(fwVer >= KB_FIRMWARE_VERSION_700) tsec_ctxt.size = 0x3000;
     
     se_key_acc_ctrl(0xE, 0x15);
     se_key_acc_ctrl(0xD, 0x15);
@@ -76,7 +78,13 @@ int keygen(u8 *keyblob, u32 fwVer, void * pkg1, pk11_offs * offs) {
     if (sp) {
         print("Going to emulate TSEC\nSize: 0x%x\nLoc: 0x%x\nOff: 0x%x\n", tsec_ctxt.size, tsec_ctxt.fw-tsec_ctxt.pkg1, tsec_ctxt.pkg11_off);
         u8 *tsec_paged = (u8 *)page_alloc(3);
-        memcpy(tsec_paged, (void *)tsec_ctxt.fw, tsec_ctxt.size);
+        if(fopen("/ReiNX/tsecfw.bin", "rb")) {
+            fread(tsec_paged, 1, fsize());
+            fclose();
+        }else{
+            memcpy(tsec_paged, (void *)tsec_ctxt.fw, tsec_ctxt.size);
+        }
+        
         print("Copied, emulaing tsec\n");
     }
 
@@ -305,9 +313,11 @@ void setup() {
     sdram_lp0_save_params(sdram_get_params());
 
     // Check if power off from HOS and shutdown
+    #ifdef RCMSHUTDOWN
     if (i2c_recv_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_IRQTOP) & MAX77620_IRQ_TOP_RTC_MASK) {
         i2c_send_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_ONOFFCNFG1, MAX77620_ONOFFCNFG1_PWR_OFF);
     }
+    #endif
 
 }
 
