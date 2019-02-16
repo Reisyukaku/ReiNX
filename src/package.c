@@ -108,7 +108,8 @@ void pkg1_unpack(pk11_offs *offs, u32 pkg1Off) {
                 fclose();
             }
             memcpy((void *)offs->warmboot_base, extWb == NULL ? pdata : extWb, sec_size[offs->sec_map[i]]);
-        } else if (offs->sec_map[i] == 2 && offs->secmon_base) {
+        } 
+        if (offs->sec_map[i] == 2 && offs->secmon_base) {
             u8 *extSec = NULL;
             if(fopen("/ReiNX/secmon.bin", "rb") != 0) {
                 extSec = malloc(fsize());
@@ -119,14 +120,33 @@ void pkg1_unpack(pk11_offs *offs, u32 pkg1Off) {
         }
         pdata += sec_size[offs->sec_map[i]];
     }
-    if(extWb != NULL) {
-        free(extWb);
-        customWarmboot = 1;
+}
+
+bool hasCustomWb() {
+    bool ret = false;
+    if(fopen("/ReiNX/warmboot.bin", "rb") != 0) {
+        ret = true;
+        fclose();
     }
-    if(extSec != NULL) {
-        free(extSec);
-        customSecmon = 1;
+    return ret;
+}
+
+bool hasCustomSecmon() {
+    bool ret = false;
+    if(fopen("/ReiNX/secmon.bin", "rb") != 0) {
+        ret = true;
+        fclose();
     }
+    return ret;
+}
+
+bool hasCustomKern() {
+    bool ret = false;
+    if(fopen("/ReiNX/kernel.bin", "rb") != 0) {
+        ret = true;
+        fclose();
+    }
+    return ret;
 }
 
 void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info) {
@@ -151,7 +171,6 @@ void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info) {
         fread(extKern, fsize(), 1);
         fclose();
     }
-    if(extKern != NULL) customKern = 1;
     memcpy(pdst, extKern == NULL ? kernel : extKern, kernel_size);
     hdr->sec_size[PKG2_SEC_KERNEL] = kernel_size;
     hdr->sec_off[PKG2_SEC_KERNEL] = 0x10000000;

@@ -28,10 +28,6 @@
 #define NOP_v7 0xE320F000
 #define ADRP(r, o) 0x90000000 | ((((o) >> 12) & 0x3) << 29) | ((((o) >> 12) & 0x1FFFFC) << 3) | ((r) & 0x1F)
 
-static u8 customSecmon = 0;
-static u8 customWarmboot = 0;
-static u8 customKern = 0;
-
 typedef struct _pkg2_hdr_t
 {
     u8 ctr[0x10];
@@ -228,6 +224,7 @@ typedef struct {
     u32 SvcDebug;
     u32 SendOff;
     u32 RcvOff;
+    u32 GenericOff;
     u8 CodeSndOff;
     u8 CodeRcvOff;
 } KernelMeta;
@@ -240,6 +237,7 @@ static const KernelMeta kernelInfo[] = {
         0x44074,
         0x23CC0,
         0x219F0,
+        0,
         4,
         4
     },
@@ -250,6 +248,7 @@ static const KernelMeta kernelInfo[] = {
         0x6086C,
         0x3F134,
         0x3D1A8,
+        0,
         4,
         4
     },
@@ -260,6 +259,7 @@ static const KernelMeta kernelInfo[] = {
         0x483FC,
         0x26080,
         0x240F0,
+        0,
         4,
         4
     },
@@ -270,6 +270,7 @@ static const KernelMeta kernelInfo[] = {
         0x48414,
         0x26080,
         0x240F0,
+        0,
         4,
         4
     },
@@ -280,6 +281,7 @@ static const KernelMeta kernelInfo[] = {
         0x4EBFC,
         0x2AF64,
         0x28F6C,
+        0,
         8,
         4
     },
@@ -290,6 +292,7 @@ static const KernelMeta kernelInfo[] = {
         0x5513C,
         0x2AD34,
         0x28DAC,
+        0x38C2C,
         8,
         8
     },
@@ -300,6 +303,7 @@ static const KernelMeta kernelInfo[] = {
         0x57548,
         0x2BB8C,
         0x29B6C,
+        0x3A8CC,
         0x10,
         0x10
     },
@@ -310,6 +314,7 @@ static const KernelMeta kernelInfo[] = {
         0x581B0,
         0x2D044,
         0x2B23C,
+        0x3C6E0,
         0x10,
         0x10
     },
@@ -326,6 +331,9 @@ void pkg1_unpack(pk11_offs *offs, u32 pkg1Off);
 void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info);
 size_t calcKipSize(pkg2_kip1_t *kip1);
 void pkg2_parse_kips(link_t *info, pkg2_hdr_t *pkg2);
+bool hasCustomKern();
+bool hasCustomSecmon();
+bool hasCustomWb();
 void loadKip(link_t *info, char *path);
 u32 *getSndPayload(u32 id, size_t *size);
 u32 *getRcvPayload(u32 id, size_t *size);

@@ -25,6 +25,9 @@
 
 static pk11_offs *pk11Offs = NULL;
 static u8 *bctBuf = NULL;
+static bool customWarmboot = false;
+static bool customSecmon = false;
+static bool customKern = false;
 
 int drawSplash() {
     // Draw splashscreen to framebuffer.
@@ -90,8 +93,9 @@ pkg2_kip1_info_t* find_by_tid(link_t* kip_list, u64 tid) {
 }
 
 void patchWarmboot(u32 warmbootBase) {
-    print("Patching Warmboot...\n");
+    //Patch warmboot
     if(!customWarmboot) {
+        print("Patching Warmboot...\n");
         uPtr *fuseCheck = NULL;
         uPtr *segmentID = NULL;
         u8 fuseCheckPat[] = {0x44, 0x12, 0x80, 0xE5};
@@ -108,9 +112,9 @@ void patchWarmboot(u32 warmbootBase) {
 }
 
 void patchSecmon(u32 secmonBase, u32 fw){
-    print("Patching Secmon...\n");
     //Patch Secmon
     if(!customSecmon){
+        print("Patching Secmon...\n");
         uPtr *rlc_ptr = NULL;
         uPtr *ver_ptr = NULL;
         uPtr *pk21_ptr = NULL;
@@ -243,9 +247,9 @@ void patchSecmon(u32 secmonBase, u32 fw){
 }
 
 void patchKernel(pkg2_hdr_t *pkg2){
-    print("Patching Kernel...\n");
     //Patch Kernel
     if(!customKern) {
+        print("Patching Kernel...\n");
         u8 hash[0x20];
         se_calc_sha256(hash, pkg2->data, pkg2->sec_size[PKG2_SEC_KERNEL]);
         uPtr kern = (uPtr)&pkg2->data;
@@ -256,12 +260,12 @@ void patchKernel(pkg2_hdr_t *pkg2){
             print("Patching kernel %d\n", i);
             
             //ID Send
-            uPtr freeSpace = getFreeSpace((void*)(kern+0x45000), 0x200, 0x20000) + 0x45000;                //Find area to write payload
+            uPtr freeSpace = getFreeSpace((void*)(kern+0x45000), 0x200, 0x20000) + 0x45000;     //Find area to write payload
             print("Kernel Freespace: 0x%08X\n", freeSpace);
             size_t payloadSize;
             u32 *sndPayload = getSndPayload(i, &payloadSize);
-            *(vu32*)(kern + kernelInfo[i].SendOff) = _B(kernelInfo[i].SendOff, freeSpace);                                             //write hook to payload
-            memcpy((void*)(kern + freeSpace), sndPayload, payloadSize);                                    //Copy payload to free space
+            *(vu32*)(kern + kernelInfo[i].SendOff) = _B(kernelInfo[i].SendOff, freeSpace);      //write hook to payload
+            memcpy((void*)(kern + freeSpace), sndPayload, payloadSize);                         //Copy payload to free space
             *(vu32*)(kern + freeSpace + payloadSize) = _B(freeSpace + payloadSize, kernelInfo[i].SendOff + kernelInfo[i].CodeSndOff);  //Jump back skipping the hook
 
             //ID Receive
@@ -277,6 +281,9 @@ void patchKernel(pkg2_hdr_t *pkg2){
                 fclose();
                 *(vu32*)(kern + kernelInfo[i].SvcDebug) = _MOVZX(8, 1, 0);
             }
+            
+            //JIT patches
+            *(vu32*)(kern + kernelInfo[i].GenericOff) = NOP_v8;
             
             break;
         }
@@ -346,6 +353,8 @@ u8 loadFirm() {
 
     print("Unpacking pkg1\n");
     pkg1_unpack(pk11Offs, (u32)pkg11);
+    customWarmboot = hasCustomWb();
+    customSecmon = hasCustomSecmon();
     PMC(APBDEV_PMC_SCRATCH1) = pk11Offs->warmboot_base;
     free(pkg1ldr);
 
@@ -354,6 +363,7 @@ u8 loadFirm() {
 
     // Unpack Package2.
     print("Unpacking package2...\n");
+    customKern = hasCustomKern();
     pkg2_hdr_t *dec_pkg2 = unpackFirmwarePackage(pkg2);
     LIST_INIT(kip1_info);
     pkg2_parse_kips(&kip1_info, dec_pkg2);
