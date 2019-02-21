@@ -53,6 +53,8 @@ $(dir_out)/sysmodules: $(dir_sysmod)
 	@cp $(dir_sysmod)/sm/sm.kip $(dir_out)/ReiNX/sysmodules/
 	@cp $(dir_sysmod)/pm/pm.kip $(dir_out)/ReiNX/sysmodules/
 	@cp $(dir_sysmod)/fs_mitm/fs_mitm.kip $(dir_out)/ReiNX/sysmodules/
+	@mkdir -p "$(dir_out)/ReiNX/titles/0100000000000034"
+	@mv $(dir_sysmod)/fatal/fatal.nsp $(dir_out)/ReiNX/titles/0100000000000034/exefs.nsp
 
 $(dir_out)/$(name).bin: $(dir_build)/$(name).elf
 	@mkdir -p "$(@D)"
