@@ -36,7 +36,7 @@
 .type _start, %function
 _start:
 	ADR R0, _start
-	LDR R1, =payload_start
+	LDR R1, =__payload_start
 	CMP R0, R1
 	BEQ _real_start
 
@@ -51,7 +51,7 @@ _copy_loop:
 	BNE _copy_loop
 
 	/* Use the relocator to copy ourselves into the right place. */
-	LDR R2, =payload_end
+	LDR R2, =__payload_end
 	SUB R2, R2, R1
 	LDR R3, =_real_start
 	LDR R4, =0x4003FF00
@@ -73,7 +73,7 @@ _real_start:
 	LDR R2, =__bss_end
 	SUB R2, R2, R0
 	BL memset
-	LDR R0, =0x90020000
+	LDR R0, =__heap_start /* initting heap to this address */
 	BL heap_init
 	BL bootrom
 	BL bootloader

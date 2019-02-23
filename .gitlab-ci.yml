@@ -1,0 +1,102 @@
+image: docker:stable
+
+stages:
+    - sync
+    - build
+    - deploy
+
+variables:
+    DOCKER_HOST: tcp://docker:2375/
+    DOCKER_DRIVER: overlay2
+    
+services:
+    - docker:dind
+
+before_script:
+    # Provide information for debugging.
+    - docker info
+
+    # Install requirements.
+    - apk --no-cache add git
+    - apk --no-cache add curl
+    - apk --no-cache add tree
+    - apk --no-cache add zip
+    - apk --no-cache add openssl
+    - apk --no-cache add openssh-client
+
+    # Add SSH info.
+    - mkdir ~/.ssh
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+
+    # Fix Git Submodules.
+    - rm -rf NX_Sysmodules
+    - git submodule update --init --recursive
+    - git remote add github git@github.com:Reisyukaku/ReiNX.git || if [ $? -eq 128 ]; then echo "Tried to add remote, already there."; else exit 1; fi
+    - git fetch github
+    - git status
+    - echo $CI_COMMIT_REF_NAME
+
+    # Provide information for debugging.
+    - tree
+
+build:
+    stage: build
+    script:
+        - docker build -t reinx-builder .
+        - docker run -a stdout -a stderr --name reinx-builder -v $(pwd):/developer reinx-builder
+        - mv out ReiNX-Build
+    artifacts:
+        name: "reinx-nightly-$CI_COMMIT_SHA"
+        paths:
+            - ReiNX-Build/
+
+publish_nightly:
+    stage: deploy
+    only:
+        - master
+        - tags
+    dependencies:
+        - build
+    script:
+        - zip -r reinx-nightly-$CI_COMMIT_SHA.zip ReiNX-Build
+        
+        # These weird YAML syntaxes are to allow special character in the commands.
+        - >
+          scp reinx-nightly-$CI_COMMIT_SHA.zip  $WEBSERVER_USER@$WEBSERVER:/data/reinx-guide/files/builds
+
+        # Create cookie file for our upcoming transfer or curl may throw an error.
+        - touch /tmp/reinx_build_push_cookie_jar
+
+        # Cookie for an admin must be created and there is no default REST API for this.
+        - >
+          curl -X POST $BASE_URL/user/login -H 'cache-control: no-cache'   -H 'content-type: application/x-www-form-urlencoded'   --data "$DRUPAL_LOGIN_POST_DATA" -b /tmp/reinx_build_push_cookie_jar   -c /tmp/reinx_build_push_cookie_jar
+        
+        # We also need CSRF Token.
+        - >
+          curl -X GET $BASE_URL/rest/session/token -H 'cache-control: no-cache' -b /tmp/reinx_build_push_cookie_jar -c /tmp/reinx_build_push_cookie_jar > /tmp/reinx_build_push_token
+
+        # Print Debug info for node JSON.
+        - >
+          echo "{\"_links\" : { \"type\" : { \"href\" : \"$BASE_URL/rest/type/node/build\"} },\"type\" : [{\"target_id\":\"build\"}],\"title\" : [{ \"value\" : \"$CI_COMMIT_TITLE\" }],\"field_build_download\" : [{ \"uri\" : \"$BASE_URL/sites/default/files/builds/reinx-nightly-$CI_COMMIT_SHA.zip\" }],\"field_commit_hash\" : [{ \"value\" : \"$CI_COMMIT_SHA\" }],\"field_branch\" : [{ \"value\" : \"$CI_COMMIT_REF_NAME\" }]}"
+
+        # Create build node.
+        - >
+          curl -X POST $BASE_URL/node?_format=hal_json -H 'Content-type: application/hal+json' -H 'cache-control: no-cache'   -H "X-CSRF-Token: $(cat /tmp/reinx_build_push_token)" -b /tmp/reinx_build_push_cookie_jar   -c /tmp/reinx_build_push_cookie_jar   --data-binary "{\"_links\" : { \"type\" : { \"href\" : \"$BASE_URL/rest/type/node/build\"} },\"type\" : [{\"target_id\":\"build\"}],\"title\" : [{ \"value\" : \"$CI_COMMIT_TITLE\" }],\"field_build_download\" : [{ \"uri\" : \"$BASE_URL/sites/default/files/builds/reinx-nightly-$CI_COMMIT_SHA.zip\" }],\"field_commit_hash\" : [{ \"value\" : \"$CI_COMMIT_SHA\" }],\"field_branch\" : [{ \"value\" : \"$CI_COMMIT_REF_NAME\" }]}"
+        
+        # Clean up for security's sake.
+        - rm /tmp/reinx_build_push_cookie_jar
+        - rm /tmp/reinx_build_push_token
+
+sync_with_github:
+    stage: sync
+    only:
+        - master
+        - tags
+    script:
+        - git checkout master
+        - git pull origin master
+        - git push -u github master

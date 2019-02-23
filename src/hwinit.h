@@ -43,5 +43,6 @@
 #include "hwinit/se_t210.h"
 #include "hwinit/mmc.h"
 #include "hwinit/gfx.h"
+#include "hwinit/smmu.h"
 
 #define DEFAULT_TEXT_COL ORANGE

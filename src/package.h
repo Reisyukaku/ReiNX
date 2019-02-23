@@ -16,7 +16,6 @@
 
 #pragma once
 #include "hwinit.h"
-#include "hwinit/arm64.h"
 
 #define PKG2_MAGIC 0x31324B50
 #define PKG2_SEC_BASE 0x80000000
@@ -25,335 +24,84 @@
 
 #define INI1_MAGIC 0x31494E49
 
-#define FREE_CODE_OFF_1ST_100 0x4797C
-#define FREE_CODE_OFF_1ST_200 0x6486C
-#define FREE_CODE_OFF_1ST_300 0x494A4
-#define FREE_CODE_OFF_1ST_302 0x494BC
-#define FREE_CODE_OFF_1ST_400 0x52890
-#define FREE_CODE_OFF_1ST_500 0x5C020
-#define FREE_CODE_OFF_1ST_600 0x5EE00
-
-#define ID_SND_OFF_100 0x23CC0
-#define ID_SND_OFF_200 0x3F134
-#define ID_SND_OFF_300 0x26080
-#define ID_SND_OFF_302 0x26080
-#define ID_SND_OFF_400 0x2AF64
-#define ID_SND_OFF_500 0x2AD34
-#define ID_SND_OFF_600 0x2BB8C
-
-#define ID_RCV_OFF_100 0x219F0
-#define ID_RCV_OFF_200 0x3D1A8
-#define ID_RCV_OFF_300 0x240F0
-#define ID_RCV_OFF_302 0x240F0
-#define ID_RCV_OFF_400 0x28F6C
-#define ID_RCV_OFF_500 0x28DAC
-#define ID_RCV_OFF_600 0x29B6C
-
-#define NOP 0xD503201F
+#define NOP_v8 0xD503201F
+#define NOP_v7 0xE320F000
 #define ADRP(r, o) 0x90000000 | ((((o) >> 12) & 0x3) << 29) | ((((o) >> 12) & 0x1FFFFC) << 3) | ((r) & 0x1F)
-
-static u8 customSecmon = 0;
-static u8 customWarmboot = 0;
-static u8 customKern = 0;
 
 typedef struct _pkg2_hdr_t
 {
-	u8 ctr[0x10];
-	u8 sec_ctr[0x40];
-	u32 magic;
-	u32 base;
-	u32 pad0;
-	u16 version;
-	u16 pad1;
-	u32 sec_size[4];
-	u32 sec_off[4];
-	u8 sec_sha256[0x80];
-	u8 data[];
+    u8 ctr[0x10];
+    u8 sec_ctr[0x40];
+    u32 magic;
+    u32 base;
+    u32 pad0;
+    u16 version;
+    u16 pad1;
+    u32 sec_size[4];
+    u32 sec_off[4];
+    u8 sec_sha256[0x80];
+    u8 data[];
 } pkg2_hdr_t;
 
 typedef struct _pkg2_ini1_t
 {
-	u32 magic;
-	u32 size;
-	u32 num_procs;
-	u32 pad;
+    u32 magic;
+    u32 size;
+    u32 num_procs;
+    u32 pad;
 } pkg2_ini1_t;
 
 typedef struct _pkg2_kip1_sec_t
 {
-	u32 offset;
-	u32 size_decomp;
-	u32 size_comp;
-	u32 attrib;
+    u32 offset;
+    u32 size_decomp;
+    u32 size_comp;
+    u32 attrib;
 } pkg2_kip1_sec_t;
 
 #define KIP1_NUM_SECTIONS 6
 
 typedef struct _pkg2_kip1_t
 {
-	u32 magic;
-	char name[12];
-	u64 tid;
-	u32 proc_cat;
-	u8 main_thrd_prio;
-	u8 def_cpu_core;
-	u8 res;
-	u8 flags;
-	pkg2_kip1_sec_t sections[KIP1_NUM_SECTIONS];
-	u32 caps[0x20];
-	u8 data[];
+    u32 magic;
+    char name[12];
+    u64 tid;
+    u32 proc_cat;
+    u8 main_thrd_prio;
+    u8 def_cpu_core;
+    u8 res;
+    u8 flags;
+    pkg2_kip1_sec_t sections[KIP1_NUM_SECTIONS];
+    u32 caps[0x20];
+    u8 data[];
 } pkg2_kip1_t;
 
 typedef struct _pkg2_kip1_info_t
 {
-	pkg2_kip1_t *kip1;
-	u32 size;
-	link_t link;
+    pkg2_kip1_t *kip1;
+    u32 size;
+    link_t link;
 } pkg2_kip1_info_t;
 
 typedef struct {
-	const char *id;
-	u32 kb;
-	u32 tsec_off;
-	u32 pkg11_off;
-	u32 sec_map[3];
-	u32 secmon_base;
-	u32 warmboot_base;
-	int set_warmboot;
+    u32 kb;
+    u32 tsec_off;
+    u32 pkg11_off;
+    u32 sec_map[3];
+    u32 secmon_base;
+    u32 warmboot_base;
 } pk11_offs;
 
 typedef struct {
-	u32 magic;
-	u32 wb_size;
-	u32 wb_off;
-	u32 pad;
-	u32 ldr_size;
-	u32 ldr_off;
-	u32 sm_size;
-	u32 sm_off;
+    u32 magic;
+    u32 wb_size;
+    u32 wb_off;
+    u32 pad;
+    u32 ldr_size;
+    u32 ldr_off;
+    u32 sm_size;
+    u32 sm_off;
 } pk11_header;
-
-enum
-{
-	// Generic instruction patches
-	SVC_VERIFY_DS = 0x10, // 0x0-0xF are RESERVED.
-	DEBUG_MODE_EN,
-	ATM_GEN_PATCH,
-	// >4 bytes patches. Value is a pointer of a u32 array.
-	ATM_ARR_PATCH,
-};
-
-typedef struct _kernel_patch_t
-{
-	u32 id;
-	u32 off;
-	u32 val;
-	u32 *ptr;
-} kernel_patch_t;
-
-typedef struct _pkg2_kernel_id_t
-{
-	u32 crc32c_id;
-	kernel_patch_t *kernel_patchset;
-} pkg2_kernel_id_t;
-
-
-static u32 PRC_ID_SND_100[] =
-{
-	0xA9BF2FEA, 0x2A0E03EB, 0xD37EF56B, 0xF86B6B8B, 0x92FFFFE9, 0x8A090168, 0xD2FFFFE9, 0x8A09016B,
-	0xD2FFFFC9, 0xEB09017F, 0x54000040, 0xF9412948,	0xA8C12FEA
-};
-#define FREE_CODE_OFF_2ND_100 (FREE_CODE_OFF_1ST_100 + sizeof(PRC_ID_SND_100) + 4)
-static u32 PRC_ID_RCV_100[] =
-{
-	0xA9BF2FEA, 0x2A1C03EA, 0xD37EF54A, 0xF86A69AA, 0x92FFFFE9, 0x8A090148, 0xD2FFFFE9, 0x8A09014A,
-	0xD2FFFFC9, 0xEB09015F, 0x54000040, 0xF9412968, 0xA8C12FEA
-};
-
-static u32 PRC_ID_SND_200[] =
-{
-	0xA9BF2FEA, 0x2A1803EB, 0xD37EF56B, 0xF86B6B8B, 0x92FFFFE9, 0x8A090168, 0xD2FFFFE9, 0x8A09016B,
-	0xD2FFFFC9, 0xEB09017F, 0x54000040, 0xF9413148, 0xA8C12FEA
-};
-#define FREE_CODE_OFF_2ND_200 (FREE_CODE_OFF_1ST_200 + sizeof(PRC_ID_SND_200) + 4)
-static u32 PRC_ID_RCV_200[] =
-{
-	0xA9BF2FEA, 0x2A0F03EA, 0xD37EF54A, 0xF9405FEB, 0xF86A696A, 0xF9407BEB, 0x92FFFFE9, 0x8A090148,
-	0xD2FFFFE9, 0x8A09014A, 0xD2FFFFC9, 0xEB09015F, 0x54000040, 0xF9413168, 0xA8C12FEA
-};
-
-static u32 PRC_ID_SND_300[] =
-{
-	0xA9BF2FEA, 0x2A1803EB, 0xD37EF56B, 0xF86B6B8B, 0x92FFFFE9, 0x8A090168, 0xD2FFFFE9, 0x8A09016B,
-	0xD2FFFFC9, 0xEB09017F, 0x54000040, 0xF9415548, 0xA8C12FEA
-};
-#define FREE_CODE_OFF_2ND_300 (FREE_CODE_OFF_1ST_300 + sizeof(PRC_ID_SND_300) + 4)
-static u32 PRC_ID_RCV_300[] =
-{
-	0xA9BF2FEA, 0x2A0F03EA, 0xD37EF54A, 0xF9405FEB, 0xF86A696A, 0xF9407BEB, 0x92FFFFE9, 0x8A090148,
-	0xD2FFFFE9, 0x8A09014A, 0xD2FFFFC9, 0xEB09015F, 0x54000040, 0xF9415568, 0xA8C12FEA
-};
-
-static u32 PRC_ID_SND_302[] =
-{
-	0xA9BF2FEA, 0x2A1803EB, 0xD37EF56B, 0xF86B6B8B, 0x92FFFFE9, 0x8A090168, 0xD2FFFFE9, 0x8A09016B,
-	0xD2FFFFC9, 0xEB09017F, 0x54000040, 0xF9415548, 0xA8C12FEA
-};
-#define FREE_CODE_OFF_2ND_302 (FREE_CODE_OFF_1ST_302 + sizeof(PRC_ID_SND_302) + 4)
-static u32 PRC_ID_RCV_302[] =
-{
-	0xA9BF2FEA, 0x2A0F03EA, 0xD37EF54A, 0xF9405FEB, 0xF86A696A, 0xF9407BEB, 0x92FFFFE9, 0x8A090148,
-	0xD2FFFFE9, 0x8A09014A, 0xD2FFFFC9, 0xEB09015F, 0x54000040, 0xF9415568, 0xA8C12FEA
-};
-
-static u32 PRC_ID_SND_400[] =
-{
-	0x2A1703EA, 0xD37EF54A, 0xF86A6B8A, 0x92FFFFE9, 0x8A090148, 0xD2FFFFE9, 0x8A09014A, 0xD2FFFFC9,
-	0xEB09015F, 0x54000060, 0xF94053EA, 0xF9415948, 0xF94053EA
-};
-#define FREE_CODE_OFF_2ND_400 (FREE_CODE_OFF_1ST_400 + sizeof(PRC_ID_SND_400) + 4)
-static u32 PRC_ID_RCV_400[] =
-{
-	0xF9403BED, 0x2A0E03EA, 0xD37EF54A, 0xF86A69AA, 0x92FFFFE9, 0x8A090148, 0xD2FFFFE9, 0x8A09014A,
-	0xD2FFFFC9, 0xEB09015F, 0x54000040, 0xF9415B28, 0xD503201F
-};
-
-static u32 PRC_ID_SND_500[] =
-{
-	0x2A1703EA, 0xD37EF54A, 0xF86A6B6A, 0x92FFFFE9, 0x8A090148, 0xD2FFFFE9, 0x8A09014A, 0xD2FFFFC9,
-	0xEB09015F, 0x54000060, 0xF94043EA, 0xF9415948, 0xF94043EA
-};
-#define FREE_CODE_OFF_2ND_500 (FREE_CODE_OFF_1ST_500 + sizeof(PRC_ID_SND_500) + 4)
-static u32 PRC_ID_RCV_500[] =
-{
-	0xF9403BED, 0x2A1503EA, 0xD37EF54A, 0xF86A69AA, 0x92FFFFE9, 0x8A090148, 0xD2FFFFE9, 0x8A09014A,
-	0xD2FFFFC9, 0xEB09015F, 0x54000040, 0xF9415B08, 0xF9406FEA
-};
-
-static u32 PRC_ID_SND_600[] =
-{
-    0xA9BF2FEA, 0xF94037EB, 0x2A1503EA, 0xD37EF54A, 0xF86A696A, 0x92FFFFE9, 0x8A090148, 0xD2FFFFE9, 0x8A09014A, 0xD2FFFFC9, 0xEB09015F, 0x54000100, 0xA9BF27E8, 0xF9400308, 0xF9401D08, 0xAA1803E0, 0xD63F0100, 0xA8C127E8, 0xAA0003E8, 0xA8C12FEA, 0xAA0803E0
-};
-#define FREE_CODE_OFF_2ND_600 (FREE_CODE_OFF_1ST_600 + sizeof(PRC_ID_SND_600) + 4)
-static u32 PRC_ID_RCV_600[] =
-{
-	0xA9BF2FEA, 0xF94043EB, 0x2A1503EA, 0xD37EF54A, 0xF86A696A, 0x92FFFFE9, 0x8A090148, 0xD2FFFFE9, 0x8A09014A, 0xD2FFFFC9, 0xEB09015F, 0x54000100, 0xA9BF27E8, 0xF9400308, 0xF9401D08, 0xAA1803E0, 0xD63F0100, 0xA8C127E8, 0xAA0003E8, 0xA8C12FEA, 0xAA0803E0
-};
-
-
-static kernel_patch_t kern1[] = {
-	{ SVC_VERIFY_DS, 0x3764C, _NOP(), NULL },          // Disable SVC verifications
-	{ DEBUG_MODE_EN, 0x44074, _MOVZX(8, 1, 0), NULL }, // Enable Debug Patch
-	// Atmosphère kernel patches.
-	{ ATM_GEN_PATCH, ID_SND_OFF_100, _B(ID_SND_OFF_100, FREE_CODE_OFF_1ST_100), NULL},    // Send process id branch.
-	{ ATM_ARR_PATCH, FREE_CODE_OFF_1ST_100, sizeof(PRC_ID_SND_100) >> 2, PRC_ID_SND_100}, // Send process id code.
-	{ ATM_GEN_PATCH, FREE_CODE_OFF_1ST_100 + sizeof(PRC_ID_SND_100),                      // Branch back and skip 1 instruction.
-		_B(FREE_CODE_OFF_1ST_100 + sizeof(PRC_ID_SND_100), ID_SND_OFF_100 + 4), NULL},
-	{ ATM_GEN_PATCH, ID_RCV_OFF_100, _B(ID_RCV_OFF_100, FREE_CODE_OFF_2ND_100), NULL},    // Receive process id branch.
-	{ ATM_ARR_PATCH, FREE_CODE_OFF_2ND_100, sizeof(PRC_ID_RCV_100) >> 2, PRC_ID_RCV_100}, // Receive process id code.
-	{ ATM_GEN_PATCH, FREE_CODE_OFF_2ND_100 + sizeof(PRC_ID_RCV_100),                      // Branch back and skip 1 instruction.
-	_B(FREE_CODE_OFF_2ND_100 + sizeof(PRC_ID_RCV_100), ID_RCV_OFF_100 + 4), NULL},
-	{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, (u32*)0xFFFFFFFF}
-};
-
-static kernel_patch_t kern2[] = {
-	{ SVC_VERIFY_DS, 0x54834, _NOP(), NULL },          // Disable SVC verifications
-	{ DEBUG_MODE_EN, 0x6086C, _MOVZX(8, 1, 0), NULL }, // Enable Debug Patch
-	// Atmosphère kernel patches.
-	{ ATM_GEN_PATCH, ID_SND_OFF_200, _B(ID_SND_OFF_200, FREE_CODE_OFF_1ST_200), NULL},    // Send process id branch.
-	{ ATM_ARR_PATCH, FREE_CODE_OFF_1ST_200, sizeof(PRC_ID_SND_200) >> 2, PRC_ID_SND_200}, // Send process id code.
-	{ ATM_GEN_PATCH, FREE_CODE_OFF_1ST_200 + sizeof(PRC_ID_SND_200),                      // Branch back and skip 1 instruction.
-		_B(FREE_CODE_OFF_1ST_200 + sizeof(PRC_ID_SND_200), ID_SND_OFF_200 + 4), NULL},
-	{ ATM_GEN_PATCH, ID_RCV_OFF_200, _B(ID_RCV_OFF_200, FREE_CODE_OFF_2ND_200), NULL},    // Receive process id branch.
-	{ ATM_ARR_PATCH, FREE_CODE_OFF_2ND_200, sizeof(PRC_ID_RCV_200) >> 2, PRC_ID_RCV_200}, // Receive process id code.
-	{ ATM_GEN_PATCH, FREE_CODE_OFF_2ND_200 + sizeof(PRC_ID_RCV_200),                      // Branch back and skip 1 instruction.
-		_B(FREE_CODE_OFF_2ND_200 + sizeof(PRC_ID_RCV_200), ID_RCV_OFF_200 + 4), NULL},
-	{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, (u32*)0xFFFFFFFF}
-};
-static kernel_patch_t kern3[] = {
-	{ SVC_VERIFY_DS, 0x3BD24, _NOP(), NULL },          // Disable SVC verifications
-	{ DEBUG_MODE_EN, 0x483FC, _MOVZX(8, 1, 0), NULL }, // Enable Debug Patch
-	// Atmosphère kernel patches.
-	{ ATM_GEN_PATCH, ID_SND_OFF_300, _B(ID_SND_OFF_300, FREE_CODE_OFF_1ST_300), NULL},    // Send process id branch.
-	{ ATM_ARR_PATCH, FREE_CODE_OFF_1ST_300, sizeof(PRC_ID_SND_300) >> 2, PRC_ID_SND_300}, // Send process id code.
-	{ ATM_GEN_PATCH, FREE_CODE_OFF_1ST_300 + sizeof(PRC_ID_SND_300),                      // Branch back and skip 1 instruction.
-		_B(FREE_CODE_OFF_1ST_300 + sizeof(PRC_ID_SND_300), ID_SND_OFF_300 + 4), NULL},
-	{ ATM_GEN_PATCH, ID_RCV_OFF_300, _B(ID_RCV_OFF_300, FREE_CODE_OFF_2ND_300), NULL},    // Receive process id branch.
-	{ ATM_ARR_PATCH, FREE_CODE_OFF_2ND_300, sizeof(PRC_ID_RCV_300) >> 2, PRC_ID_RCV_300}, // Receive process id code.
-	{ ATM_GEN_PATCH, FREE_CODE_OFF_2ND_300 + sizeof(PRC_ID_RCV_300),                      // Branch back and skip 1 instruction.
-		_B(FREE_CODE_OFF_2ND_300 + sizeof(PRC_ID_RCV_300), ID_RCV_OFF_300 + 4), NULL},
-	{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, (u32*)0xFFFFFFFF}
-};
-static kernel_patch_t kern302[] = {
-	{ SVC_VERIFY_DS, 0x3BD24, _NOP(), NULL },          // Disable SVC verifications
-	{ DEBUG_MODE_EN, 0x48414, _MOVZX(8, 1, 0), NULL }, // Enable Debug Patch
-	// Atmosphère kernel patches.
-	{ ATM_GEN_PATCH, ID_SND_OFF_302, _B(ID_SND_OFF_302, FREE_CODE_OFF_1ST_302), NULL},    // Send process id branch.
-	{ ATM_ARR_PATCH, FREE_CODE_OFF_1ST_302, sizeof(PRC_ID_SND_302) >> 2, PRC_ID_SND_302}, // Send process id code.
-	{ ATM_GEN_PATCH, FREE_CODE_OFF_1ST_302 + sizeof(PRC_ID_SND_302),                      // Branch back and skip 1 instruction.
-		_B(FREE_CODE_OFF_1ST_302 + sizeof(PRC_ID_SND_302), ID_SND_OFF_302 + 4), NULL},
-	{ ATM_GEN_PATCH, ID_RCV_OFF_302, _B(ID_RCV_OFF_302, FREE_CODE_OFF_2ND_302), NULL},    // Receive process id branch.
-	{ ATM_ARR_PATCH, FREE_CODE_OFF_2ND_302, sizeof(PRC_ID_RCV_302) >> 2, PRC_ID_RCV_302}, // Receive process id code.
-	{ ATM_GEN_PATCH, FREE_CODE_OFF_2ND_302 + sizeof(PRC_ID_RCV_302),                      // Branch back and skip 1 instruction.
-		_B(FREE_CODE_OFF_2ND_302 + sizeof(PRC_ID_RCV_302), ID_RCV_OFF_302 + 4), NULL},
-	{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, (u32*)0xFFFFFFFF}
-};
-static kernel_patch_t kern4[] = {
-	{ SVC_VERIFY_DS, 0x41EB4, _NOP(), NULL },          // Disable SVC verifications
-	{ DEBUG_MODE_EN, 0x4EBFC, _MOVZX(8, 1, 0), NULL }, // Enable Debug Patch
-	// Atmosphère kernel patches.
-	{ ATM_GEN_PATCH, ID_SND_OFF_400, _B(ID_SND_OFF_400, FREE_CODE_OFF_1ST_400), NULL},    // Send process id branch.
-	{ ATM_ARR_PATCH, FREE_CODE_OFF_1ST_400, sizeof(PRC_ID_SND_400) >> 2, PRC_ID_SND_400}, // Send process id code.
-	{ ATM_GEN_PATCH, FREE_CODE_OFF_1ST_400 + sizeof(PRC_ID_SND_400),                      // Branch back and skip 2 instructions.
-		_B(FREE_CODE_OFF_1ST_400 + sizeof(PRC_ID_SND_400), ID_SND_OFF_400 + 8), NULL},
-	{ ATM_GEN_PATCH, ID_RCV_OFF_400, _B(ID_RCV_OFF_400, FREE_CODE_OFF_2ND_400), NULL},    // Receive process id branch.
-	{ ATM_ARR_PATCH, FREE_CODE_OFF_2ND_400, sizeof(PRC_ID_RCV_400) >> 2, PRC_ID_RCV_400}, // Receive process id code.
-	{ ATM_GEN_PATCH, FREE_CODE_OFF_2ND_400 + sizeof(PRC_ID_RCV_400),                      // Branch back and skip 1 instruction.
-		_B(FREE_CODE_OFF_2ND_400 + sizeof(PRC_ID_RCV_400), ID_RCV_OFF_400 + 4), NULL},
-	{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, (u32*)0xFFFFFFFF}
-};
-
-static kernel_patch_t kern5[] = {
-	{ SVC_VERIFY_DS, 0x45E6C, _NOP(), NULL },          // Disable SVC verifications
-	{ DEBUG_MODE_EN, 0x5513C, _MOVZX(8, 1, 0), NULL }, // Enable Debug Patch
-	// Atmosphère kernel patches.
-	{ ATM_GEN_PATCH, ID_SND_OFF_500, _B(ID_SND_OFF_500, FREE_CODE_OFF_1ST_500), NULL},    // Send process id branch.
-	{ ATM_ARR_PATCH, FREE_CODE_OFF_1ST_500, sizeof(PRC_ID_SND_500) >> 2, PRC_ID_SND_500}, // Send process id code.
-	{ ATM_GEN_PATCH, FREE_CODE_OFF_1ST_500 + sizeof(PRC_ID_SND_500),                      // Branch back and skip 2 instructions.
-		_B(FREE_CODE_OFF_1ST_500 + sizeof(PRC_ID_SND_500), ID_SND_OFF_500 + 8), NULL},
-	{ ATM_GEN_PATCH, ID_RCV_OFF_500, _B(ID_RCV_OFF_500, FREE_CODE_OFF_2ND_500), NULL},    // Receive process id branch.
-	{ ATM_ARR_PATCH, FREE_CODE_OFF_2ND_500, sizeof(PRC_ID_RCV_500) >> 2, PRC_ID_RCV_500}, // Receive process id code.
-	{ ATM_GEN_PATCH, FREE_CODE_OFF_2ND_500 + sizeof(PRC_ID_RCV_500),                      // Branch back and skip 2 instructions.
-		_B(FREE_CODE_OFF_2ND_500 + sizeof(PRC_ID_RCV_500), ID_RCV_OFF_500 + 8), NULL},
-	{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, (u32*)0xFFFFFFFF}
-};
-
-static kernel_patch_t kern6[] = {
-	{ SVC_VERIFY_DS, 0x47EA0, _NOP(), NULL },          // Disable SVC verifications
-	//{ DEBUG_MODE_EN, 0x57548, _MOVZX(8, 1, 0), NULL }, // Enable Debug Patch
-	// Atmosphère kernel patches.
-	{ ATM_GEN_PATCH, ID_SND_OFF_600, _B(ID_SND_OFF_600, FREE_CODE_OFF_1ST_600), NULL},    // Send process id branch.
-	{ ATM_ARR_PATCH, FREE_CODE_OFF_1ST_600, sizeof(PRC_ID_SND_600) >> 2, PRC_ID_SND_600}, // Send process id code.
-	{ ATM_GEN_PATCH, FREE_CODE_OFF_1ST_600 + sizeof(PRC_ID_SND_600),                      // Branch back and skip 2 instructions.
-		_B(FREE_CODE_OFF_1ST_600 + sizeof(PRC_ID_SND_600), ID_SND_OFF_600 + 0x10), NULL},
-	{ ATM_GEN_PATCH, ID_RCV_OFF_600, _B(ID_RCV_OFF_600, FREE_CODE_OFF_2ND_600), NULL},    // Receive process id branch.
-	{ ATM_ARR_PATCH, FREE_CODE_OFF_2ND_600, sizeof(PRC_ID_RCV_600) >> 2, PRC_ID_RCV_600}, // Receive process id code.
-	{ ATM_GEN_PATCH, FREE_CODE_OFF_2ND_600 + sizeof(PRC_ID_RCV_600),                      // Branch back and skip 2 instructions.
-		_B(FREE_CODE_OFF_2ND_600 + sizeof(PRC_ID_RCV_600), ID_RCV_OFF_600 + 0x10), NULL},
-	{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, (u32*)0xFFFFFFFF}
-};
-
-static const pkg2_kernel_id_t _pkg2_kernel_ids[] =
-{
-	{ 0x427f2647, kern1 },   //1.0.0
-	{ 0xae19cf1b, kern2 },   //2.0.0 - 2.3.0
-	{ 0x73c9e274, kern3 },   //3.0.0 - 3.0.1
-	{ 0xe0e8cdc4, kern302 }, //3.0.2
-	{ 0x485d0157, kern4 },   //4.0.0 - 4.1.0
-	{ 0xf3c363f2, kern5 },   //5.0.0 - 5.1.0
-    { 0x64ce1a44, kern6 },   //6.0.0
-	{ 0, 0 }                              //End.
-};
 
 typedef struct kipdiff_s {
   u64 offset;              // offset from start of kip's .text segment
@@ -375,17 +123,217 @@ typedef struct kippatchset_s {
   kippatch_t *patches;     // set of patches for this version of the kip
 } kippatchset_t;
 
+//FS_MITM
+static u32 PRC_ID_SND_100[] =
+{
+    0xA9BF2FEA, 0x2A0E03EB, 0xD37EF56B, 0xF86B6B8B, 0x92FFFFE9, 0x8A090168, 0xD2FFFFE9, 0x8A09016B,
+    0xD2FFFFC9, 0xEB09017F, 0x54000040, 0xF9412948, 0xA8C12FEA
+};
+
+static u32 PRC_ID_RCV_100[] =
+{
+    0xA9BF2FEA, 0x2A1C03EA, 0xD37EF54A, 0xF86A69AA, 0x92FFFFE9, 0x8A090148, 0xD2FFFFE9, 0x8A09014A,
+    0xD2FFFFC9, 0xEB09015F, 0x54000040, 0xF9412968, 0xA8C12FEA
+};
+
+static u32 PRC_ID_SND_200[] =
+{
+    0xA9BF2FEA, 0x2A1803EB, 0xD37EF56B, 0xF86B6B8B, 0x92FFFFE9, 0x8A090168, 0xD2FFFFE9, 0x8A09016B,
+    0xD2FFFFC9, 0xEB09017F, 0x54000040, 0xF9413148, 0xA8C12FEA
+};
+
+static u32 PRC_ID_RCV_200[] =
+{
+    0xA9BF2FEA, 0x2A0F03EA, 0xD37EF54A, 0xF9405FEB, 0xF86A696A, 0xF9407BEB, 0x92FFFFE9, 0x8A090148,
+    0xD2FFFFE9, 0x8A09014A, 0xD2FFFFC9, 0xEB09015F, 0x54000040, 0xF9413168, 0xA8C12FEA
+};
+
+static u32 PRC_ID_SND_300[] =
+{
+    0xA9BF2FEA, 0x2A1803EB, 0xD37EF56B, 0xF86B6B8B, 0x92FFFFE9, 0x8A090168, 0xD2FFFFE9, 0x8A09016B,
+    0xD2FFFFC9, 0xEB09017F, 0x54000040, 0xF9415548, 0xA8C12FEA
+};
+
+static u32 PRC_ID_RCV_300[] =
+{
+    0xA9BF2FEA, 0x2A0F03EA, 0xD37EF54A, 0xF9405FEB, 0xF86A696A, 0xF9407BEB, 0x92FFFFE9, 0x8A090148,
+    0xD2FFFFE9, 0x8A09014A, 0xD2FFFFC9, 0xEB09015F, 0x54000040, 0xF9415568, 0xA8C12FEA
+};
+
+static u32 PRC_ID_SND_302[] =
+{
+    0xA9BF2FEA, 0x2A1803EB, 0xD37EF56B, 0xF86B6B8B, 0x92FFFFE9, 0x8A090168, 0xD2FFFFE9, 0x8A09016B,
+    0xD2FFFFC9, 0xEB09017F, 0x54000040, 0xF9415548, 0xA8C12FEA
+};
+
+static u32 PRC_ID_RCV_302[] =
+{
+    0xA9BF2FEA, 0x2A0F03EA, 0xD37EF54A, 0xF9405FEB, 0xF86A696A, 0xF9407BEB, 0x92FFFFE9, 0x8A090148,
+    0xD2FFFFE9, 0x8A09014A, 0xD2FFFFC9, 0xEB09015F, 0x54000040, 0xF9415568, 0xA8C12FEA
+};
+
+static u32 PRC_ID_SND_400[] =
+{
+    0x2A1703EA, 0xD37EF54A, 0xF86A6B8A, 0x92FFFFE9, 0x8A090148, 0xD2FFFFE9, 0x8A09014A, 0xD2FFFFC9,
+    0xEB09015F, 0x54000060, 0xF94053EA, 0xF9415948, 0xF94053EA
+};
+
+static u32 PRC_ID_RCV_400[] =
+{
+    0xF9403BED, 0x2A0E03EA, 0xD37EF54A, 0xF86A69AA, 0x92FFFFE9, 0x8A090148, 0xD2FFFFE9, 0x8A09014A,
+    0xD2FFFFC9, 0xEB09015F, 0x54000040, 0xF9415B28, 0xD503201F
+};
+
+static u32 PRC_ID_SND_500[] =
+{
+    0x2A1703EA, 0xD37EF54A, 0xF86A6B6A, 0x92FFFFE9, 0x8A090148, 0xD2FFFFE9, 0x8A09014A, 0xD2FFFFC9,
+    0xEB09015F, 0x54000060, 0xF94043EA, 0xF9415948, 0xF94043EA
+};
+
+static u32 PRC_ID_RCV_500[] =
+{
+    0xF9403BED, 0x2A1503EA, 0xD37EF54A, 0xF86A69AA, 0x92FFFFE9, 0x8A090148, 0xD2FFFFE9, 0x8A09014A,
+    0xD2FFFFC9, 0xEB09015F, 0x54000040, 0xF9415B08, 0xF9406FEA
+};
+
+static u32 PRC_ID_SND_600[] =
+{
+    0xA9BF2FEA, 0xF94037EB, 0x2A1503EA, 0xD37EF54A, 0xF86A696A, 0x92FFFFE9, 0x8A090148, 0xD2FFFFE9, 0x8A09014A, 0xD2FFFFC9, 0xEB09015F, 0x54000100, 0xA9BF27E8, 0xF9400308, 0xF9401D08, 0xAA1803E0, 0xD63F0100, 0xA8C127E8, 0xAA0003E8, 0xA8C12FEA, 0xAA0803E0
+};
+
+static u32 PRC_ID_RCV_600[] =
+{
+    0xA9BF2FEA, 0xF94043EB, 0x2A1503EA, 0xD37EF54A, 0xF86A696A, 0x92FFFFE9, 0x8A090148, 0xD2FFFFE9, 0x8A09014A, 0xD2FFFFC9, 0xEB09015F, 0x54000100, 0xA9BF27E8, 0xF9400308, 0xF9401D08, 0xAA1803E0, 0xD63F0100, 0xA8C127E8, 0xAA0003E8, 0xA8C12FEA, 0xAA0803E0
+};
+
+static u32 PRC_ID_SND_700[] =
+{
+    0xA9BF2FEA, 0xF9403BEB, 0x2A1903EA, 0xD37EF54A, 0xF86A696A, 0x92FFFFE9, 0x8A090148, 0xD2FFFFE9, 0x8A09014A, 0xD2FFFFC9, 0xEB09015F, 0x54000100, 0xA9BF27E8, 0xF94002A8, 0xF9401D08, 0xAA1503E0, 0xD63F0100, 0xA8C127E8, 0xAA0003E8, 0xA8C12FEA, 0xAA0803E0
+};
+
+static u32 PRC_ID_RCV_700[] = 
+{
+    0xA9BF2FEA, 0xF9404FEB, 0x2A1603EA, 0xD37EF54A, 0xF86A696A, 0x92FFFFE9, 0x8A090148, 0xD2FFFFE9, 0x8A09014A, 0xD2FFFFC9, 0xEB09015F, 0x54000100, 0xA9BF27E8, 0xF9400368, 0xF9401D08, 0xAA1B03E0, 0xD63F0100, 0xA8C127E8, 0xAA0003E8, 0xA8C12FEA, 0xAA0803E0
+};
 
 extern kippatchset_t kip_patches[];
-u8 *ReadPackage1(sdmmc_storage_t *storage);
+
+typedef struct {
+    u8 Hash[0x20];
+    u32 SvcVerify;
+    u32 SvcDebug;
+    u32 SendOff;
+    u32 RcvOff;
+    u32 GenericOff;
+    u8 CodeSndOff;
+    u8 CodeRcvOff;
+} KernelMeta;
+
+static const KernelMeta kernelInfo[] = {
+    {   //1.0.0
+        {0xB8, 0xC5, 0x0C, 0x68, 0x25, 0xA9, 0xB9, 0x5B, 0xD2, 0x4D, 0x2C, 0x7C, 0x81, 0x7F, 0xE6, 0x96, 
+        0xF2, 0x42, 0x4E, 0x1D, 0x78, 0xDF, 0x3B, 0xCA, 0x3D, 0x6B, 0x68, 0x12, 0xDD, 0xA9, 0xCB, 0x9C},
+        0x3764C,
+        0x44074,
+        0x23CC0,
+        0x219F0,
+        0,
+        4,
+        4
+    },
+    {   //2.0.0
+        {0x64, 0x0B, 0x51, 0xFF, 0x28, 0x01, 0xB8, 0x30, 0xA7, 0xA3, 0x60, 0x47, 0x86, 0x0D, 0x68, 0xAA, 
+        0x9A, 0x92, 0x10, 0x0D, 0xB9, 0xCC, 0xEC, 0x8B, 0x05, 0x80, 0x73, 0xBD, 0x33, 0xB4, 0x2C, 0x6C},
+        0x54834,
+        0x6086C,
+        0x3F134,
+        0x3D1A8,
+        0,
+        4,
+        4
+    },
+    {   //3.0.0
+        {0x50, 0x84, 0x23, 0xAC, 0x6F, 0xA1, 0x5D, 0x3B, 0x56, 0xC2, 0xFC, 0x95, 0x22, 0xCC, 0xD5, 0xA8, 
+        0x15, 0xD3, 0xB4, 0x6B, 0xA1, 0x2C, 0xF2, 0x93, 0xD3, 0x02, 0x05, 0xAB, 0x52, 0xEF, 0x73, 0xC5},
+        0x3BD24,
+        0x483FC,
+        0x26080,
+        0x240F0,
+        0,
+        4,
+        4
+    },
+    {   //3.0.2
+        {0x81, 0x9D, 0x08, 0xBE, 0xE4, 0x5E, 0x1F, 0xBB, 0x45, 0x5A, 0x6D, 0x70, 0x4B, 0xB2, 0x17, 0xA6, 
+        0x12, 0x69, 0xF8, 0xB8, 0x75, 0x1C, 0x71, 0x16, 0xF0, 0xE9, 0x79, 0x7F, 0xB0, 0xD1, 0x78, 0xB2},
+        0x3BD24,
+        0x48414,
+        0x26080,
+        0x240F0,
+        0,
+        4,
+        4
+    },
+    {   //4.0.0
+        {0xE6, 0xC0, 0xB7, 0xE3, 0x2F, 0xF9, 0x44, 0x51, 0xEC, 0xD5, 0x95, 0x79, 0xE3, 0x46, 0xB1, 0xDA, 
+        0x2E, 0xD9, 0x28, 0xC6, 0xF2, 0x31, 0x4F, 0x95, 0xD8, 0xC7, 0xD5, 0xBD, 0x15, 0xD5, 0xE2, 0x5A},
+        0x41EB4,
+        0x4EBFC,
+        0x2AF64,
+        0x28F6C,
+        0,
+        8,
+        4
+    },
+    {   //5.0.0
+        {0xB2, 0x38, 0x61, 0xA8, 0xE1, 0xE2, 0xE4, 0xE4, 0x17, 0x28, 0xED, 0xA9, 0xF6, 0xF6, 0xBD, 0xD2, 
+        0x59, 0xDB, 0x1F, 0xEF, 0x4A, 0x8B, 0x2F, 0x1C, 0x64, 0x46, 0x06, 0x40, 0xF5, 0x05, 0x9C, 0x43},
+        0x45E6C,
+        0x5513C,
+        0x2AD34,
+        0x28DAC,
+        0x38C2C,
+        8,
+        8
+    },
+    {   //6.0.0
+        {0x85, 0x97, 0x40, 0xF6, 0xC0, 0x3E, 0x3D, 0x44, 0xDE, 0xA4, 0xA0, 0x35, 0xFD, 0x12, 0x9C, 0xD4, 
+        0x4F, 0x9C, 0x36, 0x53, 0x74, 0x54, 0x2C, 0x9C, 0x55, 0x47, 0xC4, 0x25, 0xF1, 0x42, 0xFB, 0x97},
+        0x47EA0,
+        0x57548,
+        0x2BB8C,
+        0x29B6C,
+        0x3A8CC,
+        0x10,
+        0x10
+    },
+    {   //7.0.0
+        {0xA2, 0x5E, 0x47, 0x0C, 0x8E, 0x6D, 0x2F, 0xD7, 0x5D, 0xAD, 0x24, 0xD7, 0xD8, 0x24, 0x34, 0xFB, 
+        0xCD, 0x77, 0xBB, 0xE6, 0x66, 0x03, 0xCB, 0xAF, 0xAB, 0x85, 0x45, 0xA0, 0x91, 0xAF, 0x34, 0x25},
+        0x49E5C,
+        0x581B0,
+        0x2D044,
+        0x2B23C,
+        0x3C6E0,
+        0x10,
+        0x10
+    },
+};
+
+u8 *ReadBoot0(sdmmc_storage_t *storage);
+u8 *ReadPackage1Ldr(sdmmc_storage_t *storage);
 u8 *ReadPackage2(sdmmc_storage_t *storage);
 int kippatch_apply(u8 *kipdata, u64 kipdata_len, kippatch_t *patch);
 int kippatch_apply_set(u8 *kipdata, u64 kipdata_len, kippatchset_t *patchset);
 kippatchset_t *kippatch_find_set(u8 *kiphash, kippatchset_t *patchsets);
 pkg2_hdr_t *unpackFirmwarePackage(u8 *data);
-void pkg1_unpack(pk11_offs *offs, u8 *pkg1);
+void pkg1_unpack(pk11_offs *offs, u32 pkg1Off);
 void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info);
 size_t calcKipSize(pkg2_kip1_t *kip1);
 void pkg2_parse_kips(link_t *info, pkg2_hdr_t *pkg2);
+bool hasCustomKern();
+bool hasCustomSecmon();
+bool hasCustomWb();
 void loadKip(link_t *info, char *path);
-const pkg2_kernel_id_t *pkg2_identify(u32 id);
+u32 *getSndPayload(u32 id, size_t *size);
+u32 *getRcvPayload(u32 id, size_t *size);
