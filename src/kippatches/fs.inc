@@ -192,6 +192,30 @@ static kipdiff_t fs_diffs_600_nosigchk[3] = {
   { 0, 0, NULL, NULL },
 };
 
+static kipdiff_t fs_diffs_700_exfat_nogc[3] = {
+  { 0x1674B4, 4, "\x14\x40\x80\x52", "\x14\x80\x80\x52" },
+  { 0x13F710, 8, "\xF4\x4F\xBE\xA9\xFD\x7B\x01\xA9", "\xE0\x03\x1F\x2A\xC0\x03\x5F\xD6" },
+  { 0, 0, NULL, NULL },
+};
+
+static kipdiff_t fs_diffs_700_nogc[3] = {
+  { 0x15BF04, 4, "\x14\x40\x80\x52", "\x14\x80\x80\x52" },
+  { 0x134160, 8, "\xF4\x4F\xBE\xA9\xFD\x7B\x01\xA9", "\xE0\x03\x1F\x2A\xC0\x03\x5F\xD6" },
+  { 0, 0, NULL, NULL },
+};
+
+static kipdiff_t fs_diffs_700_exfat_nosigchk[3] = {
+  { 0x7FFDC, 4, "\x31\x43\x00\x94", "\xE0\x03\x1F\x2A" },
+  { 0xFDB94, 4, "\xC0\x03\x00\x36", "\x1F\x20\x03\xD5" },
+  { 0, 0, NULL, NULL },
+};
+
+static kipdiff_t fs_diffs_700_nosigchk[3] = {
+  { 0x74A2C, 4, "\x31\x43\x00\x94", "\xE0\x03\x1F\x2A" },
+  { 0xF25E4, 4, "\xC0\x03\x00\x36", "\x1F\x20\x03\xD5" },
+  { 0, 0, NULL, NULL },
+};
+
 /* patches */
 
 static kippatch_t fs_kip_patches_100[] = {
@@ -277,5 +301,18 @@ static kippatch_t fs_kip_patches_600_50_exfat[] = {
   { "nosigchk", fs_diffs_600_exfat_nosigchk },
   { "nocmac", fs_diffs_600_exfat_nocmac },
   { "nogc", fs_diffs_600_exfat_nogc },
+  { NULL, NULL }
+};
+
+static kippatch_t fs_kip_patches_700[] = {
+  { "nosigchk", fs_diffs_700_nosigchk },
+  { "nogc", fs_diffs_700_nogc },
+  { NULL, NULL }
+};
+
+
+static kippatch_t fs_kip_patches_700_exfat[] = {
+  { "nosigchk", fs_diffs_700_exfat_nosigchk },
+  { "nogc", fs_diffs_700_exfat_nogc },
   { NULL, NULL }
 };
