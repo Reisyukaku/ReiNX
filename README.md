@@ -10,7 +10,7 @@ Put `ReiNX` folder on the root of your switch's SD card and run `ReiNX.bin` with
 
 **Compiling:**
 
-You'll need devkitpro with devkitARM and run:
+You'll need devkitpro with devkitARM (along with the `devkitarm-rules` package) and run:
 ```
 git clone --recurse-submodules https://github.com/Reisyukaku/ReiNX.git
 cd ReiNX && make
