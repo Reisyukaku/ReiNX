@@ -16,4 +16,14 @@
 
 #pragma once
 
-void bootrom(void);
+#include "hwinit.h"
+#include "fs.h"
+#include "package.h"
+#include "error.h"
+
+void patchFS(pkg2_kip1_info_t* ki);
+void patchWarmboot(u32 warmbootBase);
+void patchSecmon(u32 secmonBase, u32 fw);
+void patchKernel(pkg2_hdr_t *pkg2);
+void patchKernelExtensions(link_t *kips);
+pkg2_kip1_info_t* find_by_tid(link_t* kip_list, u64 tid);

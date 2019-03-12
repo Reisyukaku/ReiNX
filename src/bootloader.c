@@ -17,9 +17,12 @@
 */
 
 #include "hwinit.h"
+#include "firmware.h"
 #include "error.h"
 #include "bootloader.h"
 #include "package.h"
+#include "bootrom.h"
+
 void check_sku() {
     if (FUSE(0x110) != 0x83)
         panic();
@@ -61,7 +64,6 @@ void check_config_fuses() {
 
 int keygen(u8 *keyblob, u32 fwVer, void * pkg1, pk11_offs * offs) {
     u8 tmp[0x20];
-    int sp = fwVer >= KB_FIRMWARE_VERSION_620;
     tsec_ctxt_t tsec_ctxt;
     tsec_ctxt.key_ver = 1;
     tsec_ctxt.fw = pkg1 + offs->tsec_off;
@@ -70,12 +72,11 @@ int keygen(u8 *keyblob, u32 fwVer, void * pkg1, pk11_offs * offs) {
     tsec_ctxt.secmon_base = offs->secmon_base;
     if(fwVer <= KB_FIRMWARE_VERSION_620) tsec_ctxt.size = 0xF00;
     if(fwVer == KB_FIRMWARE_VERSION_620) tsec_ctxt.size = 0x2900;
-    if(fwVer >= KB_FIRMWARE_VERSION_700) tsec_ctxt.size = 0x3000;
-    
+
     se_key_acc_ctrl(0xE, 0x15);
     se_key_acc_ctrl(0xD, 0x15);
-    
-    if (sp) {
+
+    if (fwVer == KB_FIRMWARE_VERSION_620) {
         print("Going to emulate TSEC\nSize: 0x%x\nLoc: 0x%x\nOff: 0x%x\n", tsec_ctxt.size, tsec_ctxt.fw-tsec_ctxt.pkg1, tsec_ctxt.pkg11_off);
         u8 *tsec_paged = (u8 *)page_alloc(3);
         if(fopen("/ReiNX/tsecfw.bin", "rb")) {
@@ -84,29 +85,30 @@ int keygen(u8 *keyblob, u32 fwVer, void * pkg1, pk11_offs * offs) {
         }else{
             memcpy(tsec_paged, (void *)tsec_ctxt.fw, tsec_ctxt.size);
         }
-        
+
         print("Copied, emulaing tsec\n");
     }
+		if (fwVer < KB_FIRMWARE_VERSION_700) {
+	    int retries = 0;
+	    int ret = tsec_query(tmp, fwVer, &tsec_ctxt);
+	    while (ret < 0)
+	    {
+	        print("Failed to keygen, retrying\n");
+	        memset(tmp, 0x00, 0x20);
+	        if (++retries > 3)
+	            return 0;
+	        ret = tsec_query(tmp, fwVer, &tsec_ctxt);
+	    }
+		}
 
-    int retries = 0;
-    int ret = tsec_query(tmp, fwVer, &tsec_ctxt);
-    while (ret < 0)
-    {
-        print("Failed to keygen, retrying\n");
-        memset(tmp, 0x00, 0x20);
-        if (++retries > 3)
-            return 0;
-        ret = tsec_query(tmp, fwVer, &tsec_ctxt);
-    }
-    
-    if(sp) {
+    if(fwVer == KB_FIRMWARE_VERSION_620) {
         // Set TSEC key.
         se_aes_key_set(12, tmp, 0x10);
 
         // Derive keyblob keys from TSEC+SBK.
         se_aes_crypt_block_ecb(13, 0, tmp, keyblob_keyseeds[0]);
         se_aes_unwrap_key(15, 14, tmp);
-        
+
         // Set TSEC root key.
         se_aes_key_set(13, tmp + 0x10, 0x10);
 
@@ -115,7 +117,7 @@ int keygen(u8 *keyblob, u32 fwVer, void * pkg1, pk11_offs * offs) {
         se_aes_unwrap_key(8, 8, new_master_keyseed);
         se_aes_unwrap_key(8, 8, pre400_master_keyseed);
         se_aes_unwrap_key(8, 8, pk21_keyseed);
-    } else {
+    } else if (fwVer < KB_FIRMWARE_VERSION_620) {
       se_key_acc_ctrl(13, 0x15);
   		se_key_acc_ctrl(14, 0x15);
 
@@ -322,6 +324,8 @@ void setup() {
 }
 
 void bootloader() {
+		if (has_keygen_ran())
+			return;
     mbist_workaround();
     clock_enable_se();
 

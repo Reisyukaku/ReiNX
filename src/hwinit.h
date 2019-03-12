@@ -26,6 +26,7 @@
 #include "hwinit/sdram.h"
 #include "hwinit/di.h"
 #include "hwinit/mc.h"
+#include "hwinit/emc.h"
 #include "hwinit/t210.h"
 #include "hwinit/pmc.h"
 #include "hwinit/pinmux.h"

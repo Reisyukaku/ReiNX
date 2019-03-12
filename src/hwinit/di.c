@@ -163,11 +163,10 @@ void display_color_screen(u32 color)
 u32 *display_init_framebuffer()
 {
 	//This configures the framebuffer @ 0xC0000000 with a resolution of 1280x720 (line stride 768).
-	exec_cfg((u32 *)DISPLAY_A_BASE, cfg_display_framebuffer, 32);
-
+	exec_cfg((u32*)DISPLAY_A_BASE, cfg_display_framebuffer, 32);
+    memset((void*)0xC0000000, 0, 0x3C0000);
 	usleep(35000);
-
 	GPIO_6(0x24) = GPIO_6(0x24) & 0xFFFFFFFE | 1;
-
-	return (u32 *)0xC0000000;
+    
+	return (u32*)0xC0000000;
 }
