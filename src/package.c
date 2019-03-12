@@ -89,10 +89,26 @@ pkg2_hdr_t *unpackFirmwarePackage(u8 *data) {
     return hdr;
 }
 
+u8 *LoadExtFile(char *path, size_t *size) {
+    print("Reading external file %s\n", path);
+    u8 *buf = NULL;
+    if(fopen(path, "rb") != 0) {
+        size_t fileSize = fsize();
+        *size = fileSize;
+        if(fileSize <= 0) {
+            error("File is empty!\n");
+            fclose();
+            return NULL;
+        }
+        buf = malloc(fileSize);
+        fread(buf, fileSize, 1);
+        fclose();
+    }
+    return buf;
+}
+
 void pkg1_unpack(pk11_offs *offs, u32 pkg1Off) {
     u8 ret = 0;
-    u8 *extWb;
-    u8 *extSec;
 
     pk11_header *hdr = (pk11_header *)(pkg1Off + 0x20);
 
@@ -101,22 +117,17 @@ void pkg1_unpack(pk11_offs *offs, u32 pkg1Off) {
 
     for (u32 i = 0; i < 3; i++) {
         if (offs->sec_map[i] == 0 && offs->warmboot_base) {
-            u8 *extWb = NULL;
-            if(fopen("/ReiNX/warmboot.bin", "rb") != 0) {
-                extWb = malloc(fsize());
-                fread(extWb, fsize(), 1);
-                fclose();
-            }
-            memcpy((void *)offs->warmboot_base, extWb == NULL ? pdata : extWb, sec_size[offs->sec_map[i]]);
-        } 
+            size_t extSize = 0;
+            u8 *extWb = LoadExtFile("/ReiNX/warmboot.bin", &extSize);
+            if(offs->kb < KB_FIRMWARE_VERSION_700)
+                memcpy((void *)offs->warmboot_base, extWb == NULL ? pdata : extWb, extWb == NULL ? sec_size[offs->sec_map[i]] : extSize);
+            free(extWb);
+        }
         if (offs->sec_map[i] == 2 && offs->secmon_base) {
-            u8 *extSec = NULL;
-            if(fopen("/ReiNX/secmon.bin", "rb") != 0) {
-                extSec = malloc(fsize());
-                fread(extSec, fsize(), 1);
-                fclose();
-            }
-            memcpy((u8 *)offs->secmon_base, extSec == NULL ? pdata : extSec, sec_size[offs->sec_map[i]]);
+            size_t extSize = 0;
+            u8 *extSec = LoadExtFile("/ReiNX/secmon.bin", &extSize);
+            memcpy((u8 *)offs->secmon_base, extSec == NULL ? pdata : extSec, extSec == NULL ? sec_size[offs->sec_map[i]] : extSize);
+            free(extSec);
         }
         pdata += sec_size[offs->sec_map[i]];
     }
@@ -151,6 +162,7 @@ bool hasCustomKern() {
 
 void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info) {
     u8 *pdst = (u8 *)0xA9800000;
+	bool hasCustSecmon = hasCustomSecmon();
 
     // Signature.
     memset(pdst, 0, 0x100);
@@ -165,16 +177,13 @@ void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info) {
     print("kernel @ %08X (%08X)\n", (u32)kernel, kernel_size);
 
     // Kernel.
-    u8 *extKern = NULL;
-    if(fopen("/ReiNX/kernel.bin", "rb") != 0) {
-        extKern = malloc(fsize());
-        fread(extKern, fsize(), 1);
-        fclose();
-    }
-    memcpy(pdst, extKern == NULL ? kernel : extKern, kernel_size);
+    size_t extSize = 0;
+    u8 *extKern = LoadExtFile("/ReiNX/kernel.bin", &extSize);
+    memcpy(pdst, extKern == NULL ? kernel : extKern, extKern == NULL ? kernel_size : extSize);
     hdr->sec_size[PKG2_SEC_KERNEL] = kernel_size;
     hdr->sec_off[PKG2_SEC_KERNEL] = 0x10000000;
-    se_aes_crypt_ctr(8, pdst, kernel_size, pdst, kernel_size, &hdr->sec_ctr[PKG2_SEC_KERNEL * 0x10]);
+	if(!hasCustSecmon)
+        se_aes_crypt_ctr(8, pdst, kernel_size, pdst, kernel_size, &hdr->sec_ctr[PKG2_SEC_KERNEL * 0x10]);
     pdst += kernel_size;
 
     // INI1.
@@ -193,11 +202,13 @@ void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info) {
     ini1->size = ini1_size;
     hdr->sec_size[PKG2_SEC_INI1] = ini1_size;
     hdr->sec_off[PKG2_SEC_INI1] = 0x14080000;
-    se_aes_crypt_ctr(8, ini1, ini1_size, ini1, ini1_size, &hdr->sec_ctr[PKG2_SEC_INI1 * 0x10]);
+	if (!hasCustSecmon)
+        se_aes_crypt_ctr(8, ini1, ini1_size, ini1, ini1_size, &hdr->sec_ctr[PKG2_SEC_INI1 * 0x10]);
 
     // Encrypt header.
     *(u32 *)hdr->ctr = 0x100 + sizeof(pkg2_hdr_t) + kernel_size + ini1_size;
-    se_aes_crypt_ctr(8, hdr, sizeof(pkg2_hdr_t), hdr, sizeof(pkg2_hdr_t), hdr);
+    if (!hasCustSecmon)
+		se_aes_crypt_ctr(8, hdr, sizeof(pkg2_hdr_t), hdr, sizeof(pkg2_hdr_t), hdr);
     memset(hdr->ctr, 0 , 0x10);
     *(u32 *)hdr->ctr = 0x100 + sizeof(pkg2_hdr_t) + kernel_size + ini1_size;
 }
@@ -267,8 +278,8 @@ kippatchset_t kip_patches[] = {
     { "FS", "\x96\x6a\xdd\x3d\x20\xb6\x27\x13\x2c\x5a\x8d\xa4\x9a\xc9\xd8\xdd", fs_kip_patches_600_40_exfat },
     { "FS", "\x3a\x57\x4d\x43\x61\x86\x19\x1d\x17\x88\xeb\x2c\x0f\x07\x6b\x11", fs_kip_patches_600_50 },
     { "FS", "\x33\x05\x53\xf6\xb5\xfb\x55\xc4\xc2\xd7\xb7\x36\x24\x02\x76\xb3", fs_kip_patches_600_50_exfat },
-    { "FS", "\x33\x05\x53\xf6\xb5\xfb\x55\xc4\xc2\xd7\xb7\x36\x24\x02\x76\xb3", fs_kip_patches_700 },
-    { "FS", "\x2a\xdb\xe9\x7e\x9b\x5f\x41\x77\x9e\xc9\x5f\xfe\x26\x99\xc9\x33", fs_kip_patches_700_exfat },
+    { "FS", "\x2a\xdb\xe9\x7e\x9b\x5f\x41\x77\x9e\xc9\x5f\xfe\x26\x99\xc9\x33", fs_kip_patches_700 },
+    { "FS", "\x2c\xce\x65\x9c\xec\x53\x6a\x8e\x4d\x91\xf3\xbe\x4b\x74\xbe\xd3", fs_kip_patches_700_exfat },
     { NULL, NULL, NULL },
 };
 

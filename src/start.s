@@ -35,47 +35,54 @@
 .globl _start
 .type _start, %function
 _start:
-	ADR R0, _start
-	LDR R1, =__payload_start
-	CMP R0, R1
-	BEQ _real_start
+    ADR R0, _start
+    LDR R1, =__payload_start
+    CMP R0, R1
+    BEQ _real_start
 
-	/* If we are not in the right location already, copy a relocator to upper IRAM. */
-	ADR R2, reloc_payload
-	LDR R3, =0x4003FF00
-	MOV R4, #(_real_start - reloc_payload)
+    /* If we are not in the right location already, copy a relocator to upper IRAM. */
+    ADR R2, reloc_payload
+    LDR R3, =0x4003FF00
+    MOV R4, #(_real_start - reloc_payload)
 _copy_loop:
-	LDMIA R2!, {R5}
-	STMIA R3!, {R5}
-	SUBS R4, #4
-	BNE _copy_loop
+    LDMIA R2!, {R5}
+    STMIA R3!, {R5}
+    SUBS R4, #4
+    BNE _copy_loop
 
-	/* Use the relocator to copy ourselves into the right place. */
-	LDR R2, =__payload_end
-	SUB R2, R2, R1
-	LDR R3, =_real_start
-	LDR R4, =0x4003FF00
-	BX R4
+    /* Use the relocator to copy ourselves into the right place. */
+    LDR R2, =__payload_end
+    SUB R2, R2, R1
+    LDR R3, =_real_start
+    LDR R4, =0x4003FF00
+    BX R4
 
 reloc_payload:
-	LDMIA R0!, {R4-R7}
-	STMIA R1!, {R4-R7}
-	SUBS R2, #0x10
-	BNE reloc_payload
-	/* Jump to the relocated entry. */
-	BX R3
+    LDMIA R0!, {R4-R7}
+    STMIA R1!, {R4-R7}
+    SUBS R2, #0x10
+    BNE reloc_payload
+    /* Jump to the relocated entry. */
+    BX R3
 
 _real_start:
-	/* Initially, we place our stack in IRAM but will move it to SDRAM later. */
-	LDR SP, =0x4003FF00
-	LDR R0, =__bss_start
-	EOR R1, R1, R1
-	LDR R2, =__bss_end
-	SUB R2, R2, R0
-	BL memset
-	LDR R0, =__heap_start /* initting heap to this address */
-	BL heap_init
-	BL bootrom
-	BL bootloader
-	BL firmware
-	B .
+    /* Initially, we place our stack in IRAM but will move it to SDRAM later. */
+    LDR SP, =0x4003FF00
+    LDR R0, =__bss_start
+    EOR R1, R1, R1
+    LDR R2, =__bss_end
+    SUB R2, R2, R0
+    BL memset
+    BL has_keygen_ran
+    MOV R1, #0
+    CMP R0, R1
+    BNE _firm
+    BL bootrom
+    BL bootloader
+    
+_firm:
+    LDR SP, =0x90010000
+    LDR R0, =__heap_start /* initting heap to this address */
+    BL heap_init
+    BL firmware
+    B .

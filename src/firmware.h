@@ -20,6 +20,8 @@
 //Boot status
 #define BOOT_STATE_ADDR (vu32 *)0x40002EF8
 #define SECMON_STATE_ADDR (vu32 *)0x40002EFC
+#define BOOT_STATE_ADDR7X (vu32 *)0x400000F8
+#define SECMON_STATE_ADDR7X	(vu32 *)(0x400000F8 + 4)
 
 #define BOOT_PKG2_LOADED 2
 #define BOOT_DONE 3
