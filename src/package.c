@@ -119,13 +119,18 @@ void pkg1_unpack(pk11_offs *offs, u32 pkg1Off) {
         if (offs->sec_map[i] == 0 && offs->warmboot_base) {
             size_t extSize = 0;
             u8 *extWb = LoadExtFile("/ReiNX/warmboot.bin", &extSize);
-            if(offs->kb < KB_FIRMWARE_VERSION_700)
-                memcpy((void *)offs->warmboot_base, extWb == NULL ? pdata : extWb, extWb == NULL ? sec_size[offs->sec_map[i]] : extSize);
+            if(extWb == NULL) extWb = LoadExtFile("/ReiNX/lp0fw.bin", &extSize);
+            if(offs->kb >= KB_FIRMWARE_VERSION_700 && extWb == NULL)
+                error("Custom warmboot required!");
+            memcpy((void *)offs->warmboot_base, extWb == NULL ? pdata : extWb, extWb == NULL ? sec_size[offs->sec_map[i]] : extSize);
             free(extWb);
         }
         if (offs->sec_map[i] == 2 && offs->secmon_base) {
             size_t extSize = 0;
             u8 *extSec = LoadExtFile("/ReiNX/secmon.bin", &extSize);
+            if(extSec == NULL) extSec = LoadExtFile("/ReiNX/exosphere.bin", &extSize);
+            if(offs->kb >= KB_FIRMWARE_VERSION_700 && extSec == NULL)
+                error("Custom secmon required!");
             memcpy((u8 *)offs->secmon_base, extSec == NULL ? pdata : extSec, extSec == NULL ? sec_size[offs->sec_map[i]] : extSize);
             free(extSec);
         }

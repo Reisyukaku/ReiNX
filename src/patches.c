@@ -17,6 +17,7 @@
 #include "patches.h"
 
 void patchFS(pkg2_kip1_info_t* ki) {
+
     print("Patching FS\n");
 
     u8 kipHash[0x20];
