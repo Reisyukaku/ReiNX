@@ -9,7 +9,7 @@ LD = $(DEVKITARM)/bin/arm-none-eabi-ld
 OBJCOPY = $(DEVKITARM)/bin/arm-none-eabi-objcopy
 
 name := ReiNX
-ver  := 2.0
+ver  := 2.1
 
 dir_source := src
 dir_data := data
