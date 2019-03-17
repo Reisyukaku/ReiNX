@@ -88,18 +88,18 @@ int keygen(u8 *keyblob, u32 fwVer, void * pkg1, pk11_offs * offs) {
 
         print("Copied, emulaing tsec\n");
     }
-		if (fwVer < KB_FIRMWARE_VERSION_700) {
-	    int retries = 0;
-	    int ret = tsec_query(tmp, fwVer, &tsec_ctxt);
-	    while (ret < 0)
-	    {
-	        print("Failed to keygen, retrying\n");
-	        memset(tmp, 0x00, 0x20);
-	        if (++retries > 3)
-	            return 0;
-	        ret = tsec_query(tmp, fwVer, &tsec_ctxt);
-	    }
-		}
+        if (fwVer < KB_FIRMWARE_VERSION_700) {
+        int retries = 0;
+        int ret = tsec_query(tmp, fwVer, &tsec_ctxt);
+        while (ret < 0)
+        {
+            print("Failed to keygen, retrying\n");
+            memset(tmp, 0x00, 0x20);
+            if (++retries > 3)
+                return 0;
+            ret = tsec_query(tmp, fwVer, &tsec_ctxt);
+        }
+        }
 
     if(fwVer == KB_FIRMWARE_VERSION_620) {
         // Set TSEC key.
@@ -119,33 +119,33 @@ int keygen(u8 *keyblob, u32 fwVer, void * pkg1, pk11_offs * offs) {
         se_aes_unwrap_key(8, 8, pk21_keyseed);
     } else if (fwVer < KB_FIRMWARE_VERSION_620) {
       se_key_acc_ctrl(13, 0x15);
-  		se_key_acc_ctrl(14, 0x15);
+        se_key_acc_ctrl(14, 0x15);
 
-  		// Set TSEC key.
-  		se_aes_key_set(13, tmp, 0x10);
+        // Set TSEC key.
+        se_aes_key_set(13, tmp, 0x10);
 
-  		// Derive keyblob keys from TSEC+SBK.
-  		se_aes_crypt_block_ecb(13, 0, tmp, keyblob_keyseeds[0]);
-  		se_aes_unwrap_key(15, 14, tmp);
-  		se_aes_crypt_block_ecb(13, 0, tmp, keyblob_keyseeds[fwVer]);
-  		se_aes_unwrap_key(13, 14, tmp);
+        // Derive keyblob keys from TSEC+SBK.
+        se_aes_crypt_block_ecb(13, 0, tmp, keyblob_keyseeds[0]);
+        se_aes_unwrap_key(15, 14, tmp);
+        se_aes_crypt_block_ecb(13, 0, tmp, keyblob_keyseeds[fwVer]);
+        se_aes_unwrap_key(13, 14, tmp);
 
-  		// Clear SBK.
-  		se_aes_key_clear(14);
+        // Clear SBK.
+        se_aes_key_clear(14);
 
-  		se_aes_crypt_block_ecb(13, 0, tmp, cmac_keyseed);
-  		se_aes_unwrap_key(11, 13, cmac_keyseed);
+        se_aes_crypt_block_ecb(13, 0, tmp, cmac_keyseed);
+        se_aes_unwrap_key(11, 13, cmac_keyseed);
 
-  		// Decrypt keyblob and set keyslots.
-  		se_aes_crypt_ctr(13, keyblob + 0x20, 0x90, keyblob + 0x20, 0x90, keyblob + 0x10);
-  		se_aes_key_set(11, keyblob + 0x20 + 0x80, 0x10); // Package1 key.
-  		se_aes_key_set(12, keyblob + 0x20, 0x10);
-  		se_aes_key_set(13, keyblob + 0x20, 0x10);
+        // Decrypt keyblob and set keyslots.
+        se_aes_crypt_ctr(13, keyblob + 0x20, 0x90, keyblob + 0x20, 0x90, keyblob + 0x10);
+        se_aes_key_set(11, keyblob + 0x20 + 0x80, 0x10); // Package1 key.
+        se_aes_key_set(12, keyblob + 0x20, 0x10);
+        se_aes_key_set(13, keyblob + 0x20, 0x10);
 
-  		se_aes_crypt_block_ecb(12, 0, tmp, pre400_master_keyseed);
+        se_aes_crypt_block_ecb(12, 0, tmp, pre400_master_keyseed);
 
-  		switch (fwVer)
-  		{
+        switch (fwVer)
+        {
             case KB_FIRMWARE_VERSION_200:
             case KB_FIRMWARE_VERSION_300:
             case KB_FIRMWARE_VERSION_301:
@@ -165,11 +165,11 @@ int keygen(u8 *keyblob, u32 fwVer, void * pkg1, pk11_offs * offs) {
                 se_aes_unwrap_key(14, 12, pre620_master_keyseed);
                 se_aes_unwrap_key(12, 12, pre400_master_keyseed);
                 break;
-  		}
+        }
 
-  		// Package2 key.
-  		se_key_acc_ctrl(8, 0x15);
-  		se_aes_unwrap_key(8, 12, pk21_keyseed);
+        // Package2 key.
+        se_key_acc_ctrl(8, 0x15);
+        se_aes_unwrap_key(8, 12, pk21_keyseed);
     }
 
     return 1;
@@ -324,8 +324,9 @@ void setup() {
 }
 
 void bootloader() {
-		if (has_keygen_ran())
-			return;
+    if (has_keygen_ran())
+        return;
+    
     mbist_workaround();
     clock_enable_se();
 

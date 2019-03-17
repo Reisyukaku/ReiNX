@@ -66,12 +66,12 @@ u8 loadFirm() {
 
     // Read package1.
     u8 *pkg1ldr = ReadPackage1Ldr(&storage);
-	memcpy(id, pkg1ldr + 0x10, 14);
+    memcpy(id, pkg1ldr + 0x10, 14);
 
     // Decrypt package1 and setup warmboot.
     print("Decrypting Package1...\n");
     u8 *pkg11 = pkg1ldr + pk11Offs->pkg11_off;
-	
+    
     // Generate keys
     if(pk11Offs->kb < KB_FIRMWARE_VERSION_700) {
         u8 *keyblob = (u8 *)malloc(NX_EMMC_BLOCKSIZE);
@@ -83,24 +83,24 @@ u8 loadFirm() {
         if(pk11Offs->kb < KB_FIRMWARE_VERSION_620)
             se_aes_crypt_ctr(11, pkg11 + 0x20, pkg11_size, pkg11 + 0x20, pkg11_size, pkg11 + 0x10);
     }
-	else {
-		if(!has_keygen_ran())
-			reboot_to_sept(pkg1ldr + pk11Offs->tsec_off);
-		else
-			se_aes_unwrap_key(8, 12, pk21_keyseed);
-	}
+    else {
+        if(!has_keygen_ran())
+            reboot_to_sept(pkg1ldr + pk11Offs->tsec_off);
+        else
+            se_aes_unwrap_key(8, 12, pk21_keyseed);
+    }
 
-	print("Unpacking pkg1\n");
-	pkg1_unpack(pk11Offs, (u32)pkg11);
+    print("Unpacking pkg1\n");
+    pkg1_unpack(pk11Offs, (u32)pkg11);
     
-	if (!hasCustomWb() && !hasCustomSecmon() && pk11Offs->kb >= KB_FIRMWARE_VERSION_700) {
-		error("Missing warmboot.bin or secmon.bin. These are needed to boot on firmware version 7.0 onwards.\n");
-	}
+    if (!hasCustomWb() && !hasCustomSecmon() && pk11Offs->kb >= KB_FIRMWARE_VERSION_700) {
+        error("Missing warmboot.bin or secmon.bin. These are needed to boot on firmware version 7.0 onwards.\n");
+    }
     PMC(APBDEV_PMC_SCRATCH1) = pk11Offs->warmboot_base;
     free(pkg1ldr);
 
     //Read package2
-	size_t pkg2_size = 0;
+    size_t pkg2_size = 0;
     u8 *pkg2 = ReadPackage2(&storage);
 
     // Unpack Package2.
@@ -163,8 +163,8 @@ void launch() {
             se_key_acc_ctrl(15, 0xFF);
     }
 
-	if (hasCustomSecmon())
-		config_exosphere(id, pk11Offs->kb, (void *)pk11Offs->warmboot_base);
+    if (hasCustomSecmon())
+        config_exosphere(id, pk11Offs->kb, (void *)pk11Offs->warmboot_base);
 
     if(pk11Offs->kb < KB_FIRMWARE_VERSION_620){
         SE_lock();
@@ -187,7 +187,7 @@ void launch() {
         SYSCTR0(SYSCTR0_COUNTERID11) = 0;
     }
 
-        // Start boot process now that pk21 is loaded.
+    // Start boot process now that pk21 is loaded.
     if (pk11Offs->kb >= KB_FIRMWARE_VERSION_700) {
         *BOOT_STATE_ADDR7X = (pk11Offs->kb < KB_FIRMWARE_VERSION_400 ? BOOT_PKG2_LOADED : BOOT_PKG2_LOADED_4X);
         *SECMON_STATE_ADDR7X = 0;
@@ -208,10 +208,10 @@ void launch() {
         usleep(1);
 
     // Signal to finish boot process.
-	if (pk11Offs->kb < KB_FIRMWARE_VERSION_700)
-		*BOOT_STATE_ADDR = (pk11Offs->kb < KB_FIRMWARE_VERSION_400 ? BOOT_DONE : BOOT_DONE_4X);
-	else
-		*BOOT_STATE_ADDR7X = BOOT_DONE_4X;
+    if (pk11Offs->kb < KB_FIRMWARE_VERSION_700)
+        *BOOT_STATE_ADDR = (pk11Offs->kb < KB_FIRMWARE_VERSION_400 ? BOOT_DONE : BOOT_DONE_4X);
+    else
+        *BOOT_STATE_ADDR7X = BOOT_DONE_4X;
 
     // Halt ourselves in waitevent state.
     while (1) FLOW_CTLR(0x4) = 0x50000000;

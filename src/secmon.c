@@ -20,16 +20,16 @@
 
 typedef struct _exo_cfg_t
 {
-	vu32 magic;
-	vu32 fwno;
-	vu32 flags;
-	vu32 rsvd;
+    vu32 magic;
+    vu32 fwno;
+    vu32 flags;
+    vu32 rsvd;
 } exo_cfg_t;
 
 typedef struct _atm_meta_t
 {
-	uint32_t magic;
-	uint32_t fwno;
+    uint32_t magic;
+    uint32_t fwno;
 } wb_cfg_t;
 
 #define ATM_WB_HEADER_OFF 0x244
@@ -46,67 +46,67 @@ typedef struct _atm_meta_t
 
 void config_exosphere(char *id, u32 kb, void *warmboot)
 {
-	u32 exoFwNo = 0;
-	u32 exoFlags = 0;
+    u32 exoFwNo = 0;
+    u32 exoFlags = 0;
 
-	volatile exo_cfg_t *exo_cfg_depr = (exo_cfg_t *)EXO_CFG_DEPR_ADDR;
-	volatile exo_cfg_t *exo_cfg = (exo_cfg_t *)EXO_CFG_ADDR;
+    volatile exo_cfg_t *exo_cfg_depr = (exo_cfg_t *)EXO_CFG_DEPR_ADDR;
+    volatile exo_cfg_t *exo_cfg = (exo_cfg_t *)EXO_CFG_ADDR;
 
-	switch (kb)
-	{
-	case KB_FIRMWARE_VERSION_200:
-		if (!strcmp(id, "20161121183008"))
-			exoFwNo = 1;
-		else
-			exoFwNo = 2;
-		break;
-	case KB_FIRMWARE_VERSION_300:
-		exoFwNo = 3;
-		break;
-	default:
-		exoFwNo = kb + 1;
-		break;
-	}
+    switch (kb)
+    {
+    case KB_FIRMWARE_VERSION_200:
+        if (!strcmp(id, "20161121183008"))
+            exoFwNo = 1;
+        else
+            exoFwNo = 2;
+        break;
+    case KB_FIRMWARE_VERSION_300:
+        exoFwNo = 3;
+        break;
+    default:
+        exoFwNo = kb + 1;
+        break;
+    }
 
-	if (kb == KB_FIRMWARE_VERSION_620)
-		exoFlags |= EXO_FLAG_620_KGN;
+    if (kb == KB_FIRMWARE_VERSION_620)
+        exoFlags |= EXO_FLAG_620_KGN;
 
-	// To avoid problems, make private debug mode always on.
-	exoFlags |= EXO_FLAG_DBG_PRIV;
+    // To avoid problems, make private debug mode always on.
+    exoFlags |= EXO_FLAG_DBG_PRIV;
 
-	// Set mailbox values.
-	exo_cfg_depr->magic = EXO_MAGIC_VAL;
-	exo_cfg->magic = EXO_MAGIC_VAL;
+    // Set mailbox values.
+    exo_cfg_depr->magic = EXO_MAGIC_VAL;
+    exo_cfg->magic = EXO_MAGIC_VAL;
 
-	exo_cfg_depr->fwno = exoFwNo;
-	exo_cfg->fwno = exoFwNo;
+    exo_cfg_depr->fwno = exoFwNo;
+    exo_cfg->fwno = exoFwNo;
 
-	exo_cfg_depr->flags = exoFlags;
-	exo_cfg->flags = exoFlags;
+    exo_cfg_depr->flags = exoFlags;
+    exo_cfg->flags = exoFlags;
 
-	// If warmboot is lp0fw, add in RSA modulus.
-	volatile wb_cfg_t *wb_cfg = (wb_cfg_t *)(warmboot + ATM_WB_HEADER_OFF);
+    // If warmboot is lp0fw, add in RSA modulus.
+    volatile wb_cfg_t *wb_cfg = (wb_cfg_t *)(warmboot + ATM_WB_HEADER_OFF);
 
-	if (wb_cfg->magic == ATM_WB_MAGIC)
-	{
-		wb_cfg->fwno = exoFwNo;
+    if (wb_cfg->magic == ATM_WB_MAGIC)
+    {
+        wb_cfg->fwno = exoFwNo;
 
-		sdmmc_storage_t storage;
-		sdmmc_t sdmmc;
+        sdmmc_storage_t storage;
+        sdmmc_t sdmmc;
 
-		// Set warmboot binary rsa modulus.
-		u8 *rsa_mod = (u8 *)malloc(512);
+        // Set warmboot binary rsa modulus.
+        u8 *rsa_mod = (u8 *)malloc(512);
 
-		sdmmc_storage_init_mmc(&storage, &sdmmc, SDMMC_4, SDMMC_BUS_WIDTH_8, 4);
-		sdmmc_storage_set_mmc_partition(&storage, 1);
-		sdmmc_storage_read(&storage, 1, 1, rsa_mod);
+        sdmmc_storage_init_mmc(&storage, &sdmmc, SDMMC_4, SDMMC_BUS_WIDTH_8, 4);
+        sdmmc_storage_set_mmc_partition(&storage, 1);
+        sdmmc_storage_read(&storage, 1, 1, rsa_mod);
 
-		// Patch AutoRCM out.
-		if ((FUSE(FUSE_RESERVED_ODMX(4)) & 3) != 3)
-			rsa_mod[0x10] = 0xF7;
-		else
-			rsa_mod[0x10] = 0x37;
+        // Patch AutoRCM out.
+        if ((FUSE(FUSE_RESERVED_ODMX(4)) & 3) != 3)
+            rsa_mod[0x10] = 0xF7;
+        else
+            rsa_mod[0x10] = 0x37;
 
-		memcpy(warmboot + 0x10, rsa_mod + 0x10, 0x100);
-	}
+        memcpy(warmboot + 0x10, rsa_mod + 0x10, 0x100);
+    }
 }
