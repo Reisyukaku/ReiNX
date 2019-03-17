@@ -119,9 +119,6 @@ u8 loadFirm() {
 
     // Build Package2.
     buildFirmwarePackage(dec_pkg2->data, dec_pkg2->sec_size[PKG2_SEC_KERNEL], &kip1_info);
-
-    //We're done with SD now
-    sdUnmount();
 }
 
 static void SE_lock() {
@@ -165,6 +162,9 @@ void launch() {
 
     if (hasCustomSecmon())
         config_exosphere(id, pk11Offs->kb, (void *)pk11Offs->warmboot_base);
+    
+    //We're done with SD now
+    sdUnmount();
 
     if(pk11Offs->kb < KB_FIRMWARE_VERSION_620){
         SE_lock();
