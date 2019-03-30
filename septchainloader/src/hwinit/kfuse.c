@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2018 Reisyukaku, naehrwert
+* Copyright (c) 2018 naehrwert
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms and conditions of the GNU General Public License,
@@ -13,31 +13,30 @@
 * You should have received a copy of the GNU General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#pragma once
 
-#include "hwinit/types.h"
+#include "kfuse.h"
+#include "clock.h"
+#include "t210.h"
 
-#define UWU0_MAGIC (u32)0x30557755
-#define METADATA_OFFSET 0xB0
+int kfuse_read(u32 *buf)
+{
+	int res = 0;
 
-typedef struct {
-	u32 magic;
-	u8 major;
-	u8 minor;
-} metadata_t;
+	clock_enable_kfuse();
 
-//Boot status
-#define BOOT_STATE_ADDR (vu32 *)0x40002EF8
-#define SECMON_STATE_ADDR (vu32 *)0x40002EFC
-#define BOOT_STATE_ADDR7X (vu32 *)0x400000F8
-#define SECMON_STATE_ADDR7X (vu32 *)(0x400000F8 + 4)
+	while (!(KFUSE(KFUSE_STATE) & KFUSE_STATE_DONE))
+		;
 
-#define BOOT_PKG2_LOADED 2
-#define BOOT_DONE 3
+	if (!(KFUSE(KFUSE_STATE) & KFUSE_STATE_CRCPASS))
+		goto out;
 
-#define BOOT_PKG2_LOADED_4X 3
-#define BOOT_DONE_4X 4
+	KFUSE(KFUSE_KEYADDR) = KFUSE_KEYADDR_AUTOINC;
+	for (int i = 0; i < KFUSE_NUM_WORDS; i++)
+		buf[i] = KFUSE(KFUSE_KEYS);
 
-#define PAYLOAD_ADDR 0xCFF00000
+	res = 1;
 
-void firmware();
+out:;
+	clock_disable_kfuse();
+	return res;
+}

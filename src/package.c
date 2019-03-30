@@ -20,6 +20,10 @@
 #include "package.h"
 #include "kippatches/fs.inc"
 
+bool customSecmon = false;
+bool customWb = false;
+bool customKernel = false;
+
 u8 *ReadBoot0(sdmmc_storage_t *storage){
     u8 *bctBuf = (u8 *)malloc(0x4000);
     sdmmc_storage_read(storage, 0 , 0x4000 / NX_EMMC_BLOCKSIZE, bctBuf);
@@ -71,7 +75,7 @@ pkg2_hdr_t *unpackFirmwarePackage(u8 *data) {
     se_aes_crypt_ctr(8, hdr, sizeof(pkg2_hdr_t), hdr, sizeof(pkg2_hdr_t), hdr);
 
     if (hdr->magic != PKG2_MAGIC) {
-        error("Package2 Magic invalid!\n");
+        error("Package2 Magic invalid!\nThere is a good chance your ReiNX build is outdated\nPlease get the newest build from our guide (reinx.guide) or our discord (discord.reiswitched.team)\nMake sure you replace the ReiNX.bin file on your SD card root too\n");
         return NULL;
     }
 
@@ -139,38 +143,41 @@ void pkg1_unpack(pk11_offs *offs, u32 pkg1Off) {
 }
 
 bool hasCustomWb() {
-    bool ret = false;
+		if (customWb)
+			return customWb;
     if(fopen("/ReiNX/warmboot.bin", "rb") != 0) {
-        ret = true;
+        customWb = true;
         fclose();
     }
     if(fopen("/ReiNX/lp0fw.bin", "rb") != 0) {
-        ret = true;
+        customWb = true;
         fclose();
     }
-    return ret;
+    return customWb;
 }
 
 bool hasCustomSecmon() {
-    bool ret = false;
+		if (customSecmon)
+			return customSecmon;
     if(fopen("/ReiNX/secmon.bin", "rb") != 0) {
-        ret = true;
+        customSecmon = true;
         fclose();
     }
     if(fopen("/ReiNX/exosphere.bin", "rb") != 0) {
-        ret = true;
+        customSecmon = true;
         fclose();
     }
-    return ret;
+    return customSecmon;
 }
 
 bool hasCustomKern() {
-    bool ret = false;
+    if (customKernel)
+			return customKernel;
     if(fopen("/ReiNX/kernel.bin", "rb") != 0) {
-        ret = true;
+        customKernel = true;
         fclose();
     }
-    return ret;
+    return customKernel;
 }
 
 void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info) {

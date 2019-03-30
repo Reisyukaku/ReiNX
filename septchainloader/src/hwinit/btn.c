@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2018 Reisyukaku, naehrwert
+* Copyright (c) 2018 naehrwert
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms and conditions of the GNU General Public License,
@@ -13,31 +13,30 @@
 * You should have received a copy of the GNU General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#pragma once
 
-#include "hwinit/types.h"
+#include "btn.h"
+#include "i2c.h"
+#include "gpio.h"
+#include "t210.h"
 
-#define UWU0_MAGIC (u32)0x30557755
-#define METADATA_OFFSET 0xB0
+u32 btn_read()
+{
+	u32 res = 0;
+	if (!gpio_read(GPIO_PORT_X, GPIO_PIN_7))
+		res |= BTN_VOL_DOWN;
+	if (!gpio_read(GPIO_PORT_X, GPIO_PIN_6))
+		res |= BTN_VOL_UP;
+	if (i2c_recv_byte(4, 0x3C, 0x15) & 0x4)
+		res |= BTN_POWER;
+	return res;
+}
 
-typedef struct {
-	u32 magic;
-	u8 major;
-	u8 minor;
-} metadata_t;
-
-//Boot status
-#define BOOT_STATE_ADDR (vu32 *)0x40002EF8
-#define SECMON_STATE_ADDR (vu32 *)0x40002EFC
-#define BOOT_STATE_ADDR7X (vu32 *)0x400000F8
-#define SECMON_STATE_ADDR7X (vu32 *)(0x400000F8 + 4)
-
-#define BOOT_PKG2_LOADED 2
-#define BOOT_DONE 3
-
-#define BOOT_PKG2_LOADED_4X 3
-#define BOOT_DONE_4X 4
-
-#define PAYLOAD_ADDR 0xCFF00000
-
-void firmware();
+u32 btn_wait()
+{
+	u32 res = 0, btn = btn_read();
+	do
+	{
+		res = btn_read();
+	} while (btn == res);
+	return res;
+}

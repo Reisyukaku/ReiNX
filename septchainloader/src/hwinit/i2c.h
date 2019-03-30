@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2018 Reisyukaku, naehrwert
+* Copyright (c) 2018 naehrwert
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms and conditions of the GNU General Public License,
@@ -13,31 +13,23 @@
 * You should have received a copy of the GNU General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#pragma once
 
-#include "hwinit/types.h"
+#ifndef _I2C_H_
+#define _I2C_H_
 
-#define UWU0_MAGIC (u32)0x30557755
-#define METADATA_OFFSET 0xB0
+#include "types.h"
 
-typedef struct {
-	u32 magic;
-	u8 major;
-	u8 minor;
-} metadata_t;
+#define I2C_1 0
+#define I2C_2 1
+#define I2C_3 2
+#define I2C_4 3
+#define I2C_5 4
+#define I2C_6 5
 
-//Boot status
-#define BOOT_STATE_ADDR (vu32 *)0x40002EF8
-#define SECMON_STATE_ADDR (vu32 *)0x40002EFC
-#define BOOT_STATE_ADDR7X (vu32 *)0x400000F8
-#define SECMON_STATE_ADDR7X (vu32 *)(0x400000F8 + 4)
+void i2c_init(u32 idx);
+int i2c_send_buf_small(u32 idx, u32 x, u32 y, u8 *buf, u32 size);
+int i2c_recv_buf_small(u8 *buf, u32 size, u32 idx, u32 x, u32 y);
+int i2c_send_byte(u32 idx, u32 x, u32 y, u8 b);
+u8 i2c_recv_byte(u32 idx, u32 x, u32 y);
 
-#define BOOT_PKG2_LOADED 2
-#define BOOT_DONE 3
-
-#define BOOT_PKG2_LOADED_4X 3
-#define BOOT_DONE_4X 4
-
-#define PAYLOAD_ADDR 0xCFF00000
-
-void firmware();
+#endif

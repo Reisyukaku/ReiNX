@@ -70,36 +70,33 @@ int keygen(u8 *keyblob, u32 fwVer, void * pkg1, pk11_offs * offs) {
     tsec_ctxt.pkg1 = pkg1;
     tsec_ctxt.pkg11_off = offs->pkg11_off;
     tsec_ctxt.secmon_base = offs->secmon_base;
-    if(fwVer <= KB_FIRMWARE_VERSION_620) tsec_ctxt.size = 0xF00;
-    if(fwVer == KB_FIRMWARE_VERSION_620) tsec_ctxt.size = 0x2900;
+		tsec_ctxt.size = fwVer == KB_FIRMWARE_VERSION_620 ? 0x2900 : 0xF00;
 
     se_key_acc_ctrl(0xE, 0x15);
     se_key_acc_ctrl(0xD, 0x15);
 
     if (fwVer == KB_FIRMWARE_VERSION_620) {
-        print("Going to emulate TSEC\nSize: 0x%x\nLoc: 0x%x\nOff: 0x%x\n", tsec_ctxt.size, tsec_ctxt.fw-tsec_ctxt.pkg1, tsec_ctxt.pkg11_off);
         u8 *tsec_paged = (u8 *)page_alloc(3);
         if(fopen("/ReiNX/tsecfw.bin", "rb")) {
             fread(tsec_paged, 1, fsize());
             fclose();
-        }else{
+        } else {
             memcpy(tsec_paged, (void *)tsec_ctxt.fw, tsec_ctxt.size);
         }
 
-        print("Copied, emulaing tsec\n");
     }
-        if (fwVer < KB_FIRMWARE_VERSION_700) {
-        int retries = 0;
-        int ret = tsec_query(tmp, fwVer, &tsec_ctxt);
-        while (ret < 0)
-        {
-            print("Failed to keygen, retrying\n");
-            memset(tmp, 0x00, 0x20);
-            if (++retries > 3)
-                return 0;
-            ret = tsec_query(tmp, fwVer, &tsec_ctxt);
-        }
-        }
+
+    int retries = 0;
+    int ret = tsec_query(tmp, fwVer, &tsec_ctxt);
+    while (ret < 0)
+    {
+        print("Failed to keygen, retrying\n");
+        memset(tmp, 0, 0x20);
+        if (++retries > 3)
+            return 0;
+        ret = tsec_query(tmp, fwVer, &tsec_ctxt);
+    }
+
 
     if(fwVer == KB_FIRMWARE_VERSION_620) {
         // Set TSEC key.
@@ -118,7 +115,7 @@ int keygen(u8 *keyblob, u32 fwVer, void * pkg1, pk11_offs * offs) {
         se_aes_unwrap_key(8, 8, pre400_master_keyseed);
         se_aes_unwrap_key(8, 8, pk21_keyseed);
     } else if (fwVer < KB_FIRMWARE_VERSION_620) {
-      se_key_acc_ctrl(13, 0x15);
+    		se_key_acc_ctrl(13, 0x15);
         se_key_acc_ctrl(14, 0x15);
 
         // Set TSEC key.
@@ -324,9 +321,6 @@ void setup() {
 }
 
 void bootloader() {
-    if (has_keygen_ran())
-        return;
-    
     mbist_workaround();
     clock_enable_se();
 

@@ -18,8 +18,7 @@
 #include "hwinit/types.h"
 
 #define UWU0_MAGIC (u32)0x30557755
-#define METADATA_OFFSET 0xB0
-
+#define METADATA_OFFSSET 0xB0 
 typedef struct {
 	u32 magic;
 	u8 major;

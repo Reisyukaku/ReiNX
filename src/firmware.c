@@ -1,5 +1,6 @@
 /*
 * Copyright (c) 2018 Reisyukaku
+* Copyright (c) 2019 Elise
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms and conditions of the GNU General Public License,
@@ -31,6 +32,12 @@ static pk11_offs *pk11Offs = NULL;
 static u8 *bctBuf = NULL;
 
 char id[15] = {0};
+
+const volatile metadata_t __attribute__((section (".metadata"))) metadata_section = {
+	.magic = UWU0_MAGIC,
+	.major = VERSION_MAJOR,
+	.minor = VERSION_MINOR
+};
 
 int drawSplash() {
     // Draw splashscreen to framebuffer.
@@ -71,7 +78,7 @@ u8 loadFirm() {
     // Decrypt package1 and setup warmboot.
     print("Decrypting Package1...\n");
     u8 *pkg11 = pkg1ldr + pk11Offs->pkg11_off;
-    
+
     // Generate keys
     if(pk11Offs->kb < KB_FIRMWARE_VERSION_700) {
         u8 *keyblob = (u8 *)malloc(NX_EMMC_BLOCKSIZE);
@@ -92,7 +99,7 @@ u8 loadFirm() {
 
     print("Unpacking pkg1\n");
     pkg1_unpack(pk11Offs, (u32)pkg11);
-    
+
     if (!hasCustomWb() && !hasCustomSecmon() && pk11Offs->kb >= KB_FIRMWARE_VERSION_700) {
         error("Missing warmboot.bin or secmon.bin. These are needed to boot on firmware version 7.0 onwards.\n");
     }
@@ -162,7 +169,7 @@ void launch() {
 
     if (hasCustomSecmon())
         config_exosphere(id, pk11Offs->kb, (void *)pk11Offs->warmboot_base);
-    
+
     //We're done with SD now
     sdUnmount();
 
@@ -235,15 +242,22 @@ void firmware() {
     }
 
     //Chainload ReiNX if applicable
-    if(PMC(APBDEV_PMC_SCRATCH49) != 69 && fopen("/ReiNX.bin", "rb")) {
-        fread((void*)PAYLOAD_ADDR, fsize(), 1);
+    if(PMC(APBDEV_PMC_SCRATCH49) != 69 && PMC(APBDEV_PMC_SCRATCH49) != 67 && fopen("/ReiNX.bin", "rb")) {
+				size_t size = fsize();
+				u8 *payload = malloc(size);
+        fread((void*)PAYLOAD_ADDR, size, 1);
         fclose();
-        sdUnmount();
-        display_end();
-        CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_V) |= 0x400; // Enable AHUB clock.
-        CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_Y) |= 0x40;  // Enable APE clock.
-        PMC(APBDEV_PMC_SCRATCH49) = 69;
-        ((void (*)())PAYLOAD_ADDR)();
+				metadata_t *metadata = (metadata_t*)(payload + METADATA_OFFSET);
+				if(metadata->magic == metadata_section.magic) {
+					if(metadata->major > metadata_section.major || (metadata->major == metadata_section.major && metadata->minor > metadata_section.minor)) {
+		        sdUnmount();
+		        display_end();
+		        CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_V) |= 0x400; // Enable AHUB clock.
+		        CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_Y) |= 0x40;  // Enable APE clock.
+		        PMC(APBDEV_PMC_SCRATCH49) = 69;
+		        ((void (*)())PAYLOAD_ADDR)();
+					}
+				}
     }
     SYSREG(AHB_AHB_SPARE_REG) &= (vu32)0xFFFFFF9F;
     PMC(APBDEV_PMC_SCRATCH49) = 0;
@@ -271,7 +285,7 @@ void firmware() {
 
     //Determine if booting in verbose mode
     if (btn_read() & BTN_VOL_DOWN) {
-        print("%kWelcome to ReiNX %s!\n%k", WHITE, VERSION, DEFAULT_TEXT_COL);
+        print("%kWelcome to ReiNX %d.%d!\n%k", WHITE, VERSION_MAJOR, VERSION_MINOR, DEFAULT_TEXT_COL);
     } else if (drawSplash()) {
         gfx_con.mute = 1;
     }
