@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
- 
+
 #include "sept.h"
 
 static u8 warmboot_reboot[] = {
@@ -34,8 +34,7 @@ int keys_generated = 0;
 int has_keygen_ran() {
     if(keys_generated == 1)
         return keys_generated;
-    int has_ran = (EMC(EMC_SCRATCH0) & 0x80000000) != 0;
-    EMC(EMC_SCRATCH0) &= ~0x80000000;
+    int has_ran = PMC(APBDEV_PMC_SCRATCH49) == 67;
     keys_generated = has_ran;
     return has_ran;
 }

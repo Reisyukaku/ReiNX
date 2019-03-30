@@ -1,5 +1,6 @@
 /*
-* Copyright (c) 2018 Reisyukaku, naehrwert
+* Copyright (c) 2018 naehrwert
+* Copyright (c) 2018 CTCaer
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms and conditions of the GNU General Public License,
@@ -13,31 +14,22 @@
 * You should have received a copy of the GNU General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#pragma once
 
-#include "hwinit/types.h"
+#ifndef _TSEC_H_
+#define _TSEC_H_
 
-#define UWU0_MAGIC (u32)0x30557755
-#define METADATA_OFFSET 0xB0
+#include "types.h"
 
-typedef struct {
-	u32 magic;
-	u8 major;
-	u8 minor;
-} metadata_t;
+typedef struct _tsec_ctxt_t
+{
+	u32 key_ver;
+	void *fw;
+	u32 size;
+	void *pkg1;
+	u32 pkg11_off;
+	u32 secmon_base;
+} tsec_ctxt_t;
 
-//Boot status
-#define BOOT_STATE_ADDR (vu32 *)0x40002EF8
-#define SECMON_STATE_ADDR (vu32 *)0x40002EFC
-#define BOOT_STATE_ADDR7X (vu32 *)0x400000F8
-#define SECMON_STATE_ADDR7X (vu32 *)(0x400000F8 + 4)
+int tsec_query(u8 *tsec_keys, u8 kb, tsec_ctxt_t *tsec_ctxt);
 
-#define BOOT_PKG2_LOADED 2
-#define BOOT_DONE 3
-
-#define BOOT_PKG2_LOADED_4X 3
-#define BOOT_DONE_4X 4
-
-#define PAYLOAD_ADDR 0xCFF00000
-
-void firmware();
+#endif

@@ -10,7 +10,6 @@ SECTIONS
 	.text :
 	{
 		*(.text.start);
-		*(.metadata);
 		*(.text*);
 	}
 	.data :

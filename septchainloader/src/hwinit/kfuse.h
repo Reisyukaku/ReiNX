@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2018 Reisyukaku, naehrwert
+* Copyright (c) 2018 naehrwert
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms and conditions of the GNU General Public License,
@@ -13,31 +13,29 @@
 * You should have received a copy of the GNU General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#pragma once
 
-#include "hwinit/types.h"
+#ifndef _KFUSE_H_
+#define _KFUSE_H_
 
-#define UWU0_MAGIC (u32)0x30557755
-#define METADATA_OFFSET 0xB0
+#include "types.h"
 
-typedef struct {
-	u32 magic;
-	u8 major;
-	u8 minor;
-} metadata_t;
+#define KFUSE_STATE_SOFTRESET (1<<31)
+#define KFUSE_STATE_STOP (1<<25)
+#define KFUSE_STATE_RESTART (1<<24)
+#define KFUSE_STATE_CRCPASS (1<<17)
+#define KFUSE_STATE_DONE (1<<16)
+#define KFUSE_STATE_ERRBLOCK_MASK 0x3F00
+#define KFUSE_STATE_ERRBLOCK_SHIFT 8
+#define KFUSE_STATE_CURBLOCK_MASK 0x3F
 
-//Boot status
-#define BOOT_STATE_ADDR (vu32 *)0x40002EF8
-#define SECMON_STATE_ADDR (vu32 *)0x40002EFC
-#define BOOT_STATE_ADDR7X (vu32 *)0x400000F8
-#define SECMON_STATE_ADDR7X (vu32 *)(0x400000F8 + 4)
+#define KFUSE_KEYADDR_AUTOINC (1<<16)
 
-#define BOOT_PKG2_LOADED 2
-#define BOOT_DONE 3
+#define KFUSE_STATE 0x80
+#define KFUSE_KEYADDR 0x88
+#define KFUSE_KEYS 0x8C
 
-#define BOOT_PKG2_LOADED_4X 3
-#define BOOT_DONE_4X 4
+#define KFUSE_NUM_WORDS 144
 
-#define PAYLOAD_ADDR 0xCFF00000
+int kfuse_read(u32 *buf);
 
-void firmware();
+#endif
