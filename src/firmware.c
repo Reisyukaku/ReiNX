@@ -49,6 +49,22 @@ int drawSplash() {
     return 0;
 }
 
+pk11_offs *distinguishVersions(u32 kb) {
+    if (kb == KB_FIRMWARE_VERSION_200) {
+        if (strcmp(id, "20161121183008")) {
+            return &_pk11_offs[1];
+        } else {
+            return &_pk11_offs[0];
+        }
+    } else if ((kb == KB_FIRMWARE_VERSION_700)) {
+        if (strcmp(id, "20181218175730")) {
+            return &_pk11_offs[9];
+        } else {
+            return &_pk11_offs[8];
+        }
+    }
+}
+
 u8 loadFirm() {
     print("%k\nSetting up HOS:\n%k", WHITE, DEFAULT_TEXT_COL);
     sdmmc_storage_t storage;
@@ -74,7 +90,9 @@ u8 loadFirm() {
     // Read package1.
     u8 *pkg1ldr = ReadPackage1Ldr(&storage);
     memcpy(id, pkg1ldr + 0x10, 14);
-
+    if (pk11Offs->kb == KB_FIRMWARE_VERSION_100 || pk11Offs->kb == KB_FIRMWARE_VERSION_700)
+        pk11Offs = distinguishVersions(pk11Offs->kb);
+    
     // Decrypt package1 and setup warmboot.
     print("Decrypting Package1...\n");
     u8 *pkg11 = pkg1ldr + pk11Offs->pkg11_off;

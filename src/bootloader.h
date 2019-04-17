@@ -29,6 +29,7 @@ static const pk11_offs _pk11_offs[] = {
     { KB_FIRMWARE_VERSION_600, 0x1900, 0x3FE0, { 1, 2, 0 }, 0x4002B000, 0x4003D800 }, //6.0.0
     { KB_FIRMWARE_VERSION_620, 0x0E00, 0x6FE0, { 1, 2, 0 }, 0x4002B000, 0x4003D800 }, //6.2.0
     { KB_FIRMWARE_VERSION_700, 0x0F00, 0x6FE0, { 1, 2, 0 }, 0x40030000, 0x4003E000 }, //7.0.0
+    { KB_FIRMWARE_VERSION_800, 0x0E00, 0x6FE0, { 1, 2, 0 }, 0x40030000, 0x4003E000 },
     { NULL } // End.
 };
 

@@ -10,7 +10,7 @@ OBJCOPY = $(DEVKITARM)/bin/arm-none-eabi-objcopy
 
 name := ReiNX
 ver_major  := 2
-ver_minor  := 1
+ver_minor  := 2
 
 dir_source := src
 dir_data := data
