@@ -221,6 +221,7 @@ void launch() {
         *BOOT_STATE_ADDR = (pk11Offs->kb < KB_FIRMWARE_VERSION_400 ? BOOT_PKG2_LOADED : BOOT_PKG2_LOADED_4X);
         *SECMON_STATE_ADDR = 0;
     }
+    
     // Disable display.
     display_end();
 
@@ -250,6 +251,7 @@ void firmware() {
     gfx_clear_color(&gfx_ctxt, BLACK);
     gfx_con_init(&gfx_con, &gfx_ctxt);
     gfx_con_setcol(&gfx_con, DEFAULT_TEXT_COL, 0, 0);
+    u32 currBut = btn_read();
 
     //Mount SD
     if (!sdMount()) {
@@ -282,7 +284,7 @@ void firmware() {
     PMC(APBDEV_PMC_SCRATCH49) = 0;
 
     //Chainload recovery if applicable
-    if(btn_read() & BTN_VOL_UP){
+    if((currBut & BTN_VOL_UP) && !(currBut & BTN_VOL_DOWN)){
         if(fopen("/ReiNX/Recovery.bin", "rb") != 0) {
             fread((void*)PAYLOAD_ADDR, fsize(), 1);
             fclose();
@@ -303,7 +305,7 @@ void firmware() {
     }
 
     //Determine if booting in verbose mode
-    if (btn_read() & BTN_VOL_DOWN) {
+    if ((currBut & BTN_VOL_DOWN) && !(currBut & BTN_VOL_UP)) {
         print("%kWelcome to ReiNX %d.%d!\n%k", WHITE, VERSION_MAJOR, VERSION_MINOR, DEFAULT_TEXT_COL);
     } else if (drawSplash()) {
         gfx_con.mute = 1;
