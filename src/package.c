@@ -177,7 +177,7 @@ bool hasCustomKern() {
     return customKernel;
 }
 
-void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info) {
+void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info, pk11_offs *pk11Offs) {
     u8 *pdst = (u8 *)0xA9800000;
     bool hasCustSecmon = hasCustomSecmon();
 
@@ -199,6 +199,7 @@ void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info) {
     memcpy(pdst, extKern == NULL ? kernel : extKern, extKern == NULL ? kernel_size : extSize);
     hdr->sec_size[PKG2_SEC_KERNEL] = kernel_size;
     hdr->sec_off[PKG2_SEC_KERNEL] = 0x10000000;
+    
     if(!hasCustSecmon)
         se_aes_crypt_ctr(8, pdst, kernel_size, pdst, kernel_size, &hdr->sec_ctr[PKG2_SEC_KERNEL * 0x10]);
     pdst += kernel_size;
@@ -221,7 +222,6 @@ void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info) {
     hdr->sec_off[PKG2_SEC_INI1] = 0x14080000;
     if (!hasCustSecmon)
         se_aes_crypt_ctr(8, ini1, ini1_size, ini1, ini1_size, &hdr->sec_ctr[PKG2_SEC_INI1 * 0x10]);
-
     // Encrypt header.
     *(u32 *)hdr->ctr = 0x100 + sizeof(pkg2_hdr_t) + kernel_size + ini1_size;
     if (!hasCustSecmon)
@@ -357,6 +357,10 @@ u32 *getSndPayload(u32 id, size_t *size) {
             *size = sizeof(PRC_ID_SND_700);
             ret = PRC_ID_SND_700;
             break;
+        case 8:
+            *size = sizeof(PRC_ID_SND_800);
+            ret = PRC_ID_SND_800;
+            break;
     }
     return ret;
 }
@@ -395,6 +399,10 @@ u32 *getRcvPayload(u32 id, size_t *size) {
         case 7:
             *size = sizeof(PRC_ID_RCV_700);
             ret = PRC_ID_RCV_700;
+            break;
+        case 8:
+            *size = sizeof(PRC_ID_RCV_800);
+            ret = PRC_ID_RCV_800;
             break;
     }
     return ret;

@@ -144,7 +144,7 @@ u8 loadFirm() {
     patchKernelExtensions(&kip1_info);
 
     // Build Package2.
-    buildFirmwarePackage(dec_pkg2->data, dec_pkg2->sec_size[PKG2_SEC_KERNEL], &kip1_info);
+    buildFirmwarePackage(dec_pkg2->data, dec_pkg2->sec_size[PKG2_SEC_KERNEL], &kip1_info, pk11Offs);
 }
 
 static void SE_lock() {
