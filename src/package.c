@@ -78,18 +78,15 @@ pkg2_hdr_t *unpackFirmwarePackage(u8 *data) {
         error("Package2 Magic invalid!\nThere is a good chance your ReiNX build is outdated\nPlease get the newest build from our guide (reinx.guide) or our discord (discord.reiswitched.team)\nMake sure you replace the ReiNX.bin file on your SD card root too\n");
         return NULL;
     }
+    print("decrypted header\n");
 
     //Decrypt body
     data += (0x100 + sizeof(pkg2_hdr_t));
-
     for (u32 i = 0; i < 4; i++) {
         if (!hdr->sec_size[i]) continue;
-
         se_aes_crypt_ctr(8, data, hdr->sec_size[i], data, hdr->sec_size[i], &hdr->sec_ctr[i * 0x10]);
-
         data += hdr->sec_size[i];
     }
-
     return hdr;
 }
 
@@ -241,7 +238,12 @@ size_t calcKipSize(pkg2_kip1_t *kip1) {
 }
 
 void pkg2_parse_kips(link_t *info, pkg2_hdr_t *pkg2) {
-    u8 *ptr = pkg2->data + pkg2->sec_size[PKG2_SEC_KERNEL];
+    u8 *ptr = pkg2->data;
+    if (pkg2->sec_size[PKG2_SEC_INI1] == 0)
+        ptr += *(u32 *)(ptr + 0x168);
+    else
+        ptr += pkg2->sec_size[PKG2_SEC_KERNEL];
+
     pkg2_ini1_t *ini1 = (pkg2_ini1_t *)ptr;
     ptr += sizeof(pkg2_ini1_t);
 
@@ -300,6 +302,8 @@ kippatchset_t kip_patches[] = {
     { "FS", "\x33\x05\x53\xf6\xb5\xfb\x55\xc4\xc2\xd7\xb7\x36\x24\x02\x76\xb3", fs_kip_patches_600_50_exfat },
     { "FS", "\x2a\xdb\xe9\x7e\x9b\x5f\x41\x77\x9e\xc9\x5f\xfe\x26\x99\xc9\x33", fs_kip_patches_700 },
     { "FS", "\x2c\xce\x65\x9c\xec\x53\x6a\x8e\x4d\x91\xf3\xbe\x4b\x74\xbe\xd3", fs_kip_patches_700_exfat },
+    { "FS", "\xdb\xd9\x41\xc0\xc5\x3c\x52\xcc\xf7\x20\x2c\x84\xd8\xe0\xf7\x80", fs_kip_patches_800 },
+    { "FS", "\xb2\xf5\x17\x6b\x35\x48\x36\x4d\x07\x9a\x29\xb1\x41\xa2\x3b\x06", fs_kip_patches_800_exfat },
     { NULL, NULL, NULL },
 };
 
