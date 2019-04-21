@@ -1027,6 +1027,7 @@ void sdmmc_end(sdmmc_t *sdmmc)
 		{
 			gpio_output_enable(GPIO_PORT_E, GPIO_PIN_4, GPIO_OUTPUT_DISABLE);
 			musleep(1); // To power cycle min 1ms without power is needed.
+            max77620_regulator_enable(REGULATOR_LDO2, 0);
 		}
 
 		_sdmmc_get_clkcon(sdmmc);

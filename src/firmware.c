@@ -126,12 +126,44 @@ u8 loadFirm() {
 
     //Read package2
     size_t pkg2_size = 0;
-    u8 *pkg2 = ReadPackage2(&storage);
+    u8 *pkg2 = ReadPackage2(&storage, &pkg2_size);
 
     // Unpack Package2.
     print("Unpacking package2...\n");
 
     pkg2_hdr_t *dec_pkg2 = unpackFirmwarePackage(pkg2);
+    //If firmware is 8.0, remake package2 by moving ini1 into its section from kernel
+    //TODO: find better way to differentiate the firmware version that isn't TSEC firmware offset
+    if (pk11Offs->tsec_off == 0xE00 && pk11Offs->kb == KB_FIRMWARE_VERSION_800) {
+        pkg2_ini1_t *old_ini1 = (pkg2_ini1_t *)(dec_pkg2->data + 0x95000);
+        *((vu64 *)((uPtr)dec_pkg2->data + 0x168)) = (u64)dec_pkg2->sec_size[0];
+
+        dec_pkg2->sec_off[PKG2_SEC_INI1] = dec_pkg2->sec_off[PKG2_SEC_KERNEL] + dec_pkg2->sec_size[PKG2_SEC_KERNEL];
+        size_t rebuilt_package2_size = sizeof(pkg2_hdr_t) + dec_pkg2->sec_size[0] + ALIGN(old_ini1->size, 4);
+
+        pkg2_hdr_t *new_pkg2 = (pkg2_hdr_t *)malloc(rebuilt_package2_size);
+
+        memcpy(new_pkg2, dec_pkg2, sizeof(pkg2_hdr_t));
+        memcpy(new_pkg2->data, dec_pkg2->data, dec_pkg2->sec_size[0]);
+        memcpy(new_pkg2->data + dec_pkg2->sec_size[0], old_ini1, old_ini1->size);
+        new_pkg2->sec_size[1] = ALIGN(old_ini1->size, 4);
+
+        uint8_t *data = new_pkg2->data;
+
+        for (unsigned int section = 0; section < 3; section++) {
+            size_t sz = (size_t)new_pkg2->sec_size[section];
+            if(!sz)
+                continue;
+
+            se_calc_sha256(&(new_pkg2->sec_sha256[section * 0x20]), data, sz);
+            data += sz;
+        }
+
+        u32 *ctrs = (u32 *)(new_pkg2->ctr);
+        uint32_t package_size = ctrs[0] ^ ctrs[2] ^ ctrs[3];
+        ctrs[3] ^= (package_size ^ rebuilt_package2_size);
+        dec_pkg2 = new_pkg2;
+    }
     print("Parsing kips\n");
     LIST_INIT(kip1_info);
     pkg2_parse_kips(&kip1_info, dec_pkg2);

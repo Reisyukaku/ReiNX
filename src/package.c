@@ -36,7 +36,7 @@ u8 *ReadPackage1Ldr(sdmmc_storage_t *storage) {
     return pk11;
 }
 
-u8 *ReadPackage2(sdmmc_storage_t *storage) {
+u8 *ReadPackage2(sdmmc_storage_t *storage, size_t *out_size) {
     // Read GPT partition.
     LIST_INIT(gpt);
     sdmmc_storage_set_mmc_partition(storage, 0);
@@ -55,6 +55,7 @@ u8 *ReadPackage2(sdmmc_storage_t *storage) {
     nx_emmc_part_read(storage, pkg2_part, 0x4000 / NX_EMMC_BLOCKSIZE, 1, tmp);
     u32 *hdr = (u32 *)(tmp + 0x100);
     u32 pkg2_size = hdr[0] ^ hdr[2] ^ hdr[3];
+    *out_size = pkg2_size;
     free(tmp);
     u8 *pkg2 = malloc(ALIGN(pkg2_size, NX_EMMC_BLOCKSIZE));
     print("Reading Package2...\n");
@@ -252,6 +253,7 @@ void pkg2_parse_kips(link_t *info, pkg2_hdr_t *pkg2) {
         pkg2_kip1_info_t *ki = (pkg2_kip1_info_t *)malloc(sizeof(pkg2_kip1_info_t));
         ki->kip1 = kip1;
         ki->size = calcKipSize(kip1);
+        print("Found kip %s of size 0x%x\n", kip1->name, ki->size);
         list_append(info, &ki->link);
         ptr += ki->size;
     }
