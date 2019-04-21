@@ -221,24 +221,17 @@ void patchKernel(pkg2_hdr_t *pkg2){
     if(!hasCustomKern()) {
         print("Patching Kernel...\n");
         u8 hash[0x20];
-        se_calc_sha256(hash, pkg2->data, pkg2->sec_size[PKG2_SEC_KERNEL]);
+        if(pkg2->sec_size[PKG2_SEC_INI1] == 0) {
+            se_calc_sha256(hash, (void*)(pkg2->data + 0x1A8), 0x95000 - 0x1A8); //TODO unhardcode
+            *((vu64 *)((uPtr)pkg2->data + 0x168)) = (u64)pkg2->sec_size[PKG2_SEC_KERNEL];
+        }else{
+            se_calc_sha256(hash, pkg2->data, pkg2->sec_size[PKG2_SEC_KERNEL]);
+        }
         uPtr kern = (uPtr)&pkg2->data;
         uPtr sendOff, recvOff, codeRcvOff, codeSndOff, svcVerifOff, svcDebugOff;
-
+        
         int i; for(i = 0; i < sizeof(kernelInfo)/sizeof(KernelMeta); i++) {
-            if(memcmp(hash, kernelInfo[i].Hash, 0x20))  {
-                //Due to ini1 being embedded in kernel in firmware 8.0, we cannot hash the entire kernel as the ini1 changes between exFAT firmware versions and FAT32 firmware versions
-                u8 tmp_hash[0x20];
-                if ((kernelInfo[i].hash_offset != 0 && kernelInfo[i].hash_size != 0)) {
-                    se_calc_sha256(tmp_hash, pkg2->data + kernelInfo[i].hash_offset, kernelInfo[i].hash_size);
-                    if (!memcmp(tmp_hash, kernelInfo[i].Hash, 0x20))
-                        memcpy(hash, tmp_hash, 0x20);
-                    else
-                        continue;
-                } else 
-                    continue;
-                
-            }
+            if(memcmp(hash, kernelInfo[i].Hash, 0x20)) continue;
             print("Patching kernel %d\n", i);
 
             //ID Send

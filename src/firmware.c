@@ -135,9 +135,12 @@ u8 loadFirm() {
     //If firmware is 8.0, remake package2 by moving ini1 into its section from kernel
     //TODO: find better way to differentiate the firmware version that isn't TSEC firmware offset
     if (pk11Offs->tsec_off == 0xE00 && pk11Offs->kb == KB_FIRMWARE_VERSION_800) {
-        pkg2_ini1_t *old_ini1 = (pkg2_ini1_t *)(dec_pkg2->data + 0x95000);
-        *((vu64 *)((uPtr)dec_pkg2->data + 0x168)) = (u64)dec_pkg2->sec_size[0];
-
+        KernelNewOffs *kOffs = (KernelNewOffs*)(dec_pkg2->data + kernelInfo[8].krnl_offs); //TODO
+        print("New kernel detected!\n");
+        print("Ini off: %X\n", kOffs->ini_off);
+        print("KernelLdr off: %X\n", kOffs->krnlLdr_off);
+        
+        pkg2_ini1_t *old_ini1 = (pkg2_ini1_t *)(dec_pkg2->data + kOffs->ini_off);
         dec_pkg2->sec_off[PKG2_SEC_INI1] = dec_pkg2->sec_off[PKG2_SEC_KERNEL] + dec_pkg2->sec_size[PKG2_SEC_KERNEL];
         size_t rebuilt_package2_size = sizeof(pkg2_hdr_t) + dec_pkg2->sec_size[0] + ALIGN(old_ini1->size, 4);
 
@@ -296,21 +299,21 @@ void firmware() {
 
     //Chainload ReiNX if applicable
     if(PMC(APBDEV_PMC_SCRATCH49) != 69 && PMC(APBDEV_PMC_SCRATCH49) != 67 && fopen("/ReiNX.bin", "rb")) {
-				size_t size = fsize();
-				u8 *payload = malloc(size);
+        size_t size = fsize();
+        u8 *payload = malloc(size);
         fread((void*)PAYLOAD_ADDR, size, 1);
         fclose();
-				metadata_t *metadata = (metadata_t*)(payload + METADATA_OFFSET);
-				if(metadata->magic == metadata_section.magic) {
-					if(metadata->major > metadata_section.major || (metadata->major == metadata_section.major && metadata->minor > metadata_section.minor)) {
-		        sdUnmount();
-		        display_end();
-		        CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_V) |= 0x400; // Enable AHUB clock.
-		        CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_Y) |= 0x40;  // Enable APE clock.
-		        PMC(APBDEV_PMC_SCRATCH49) = 69;
-		        ((void (*)())PAYLOAD_ADDR)();
-					}
-				}
+        metadata_t *metadata = (metadata_t*)(payload + METADATA_OFFSET);
+        if(metadata->magic == metadata_section.magic) {
+            if(metadata->major > metadata_section.major || (metadata->major == metadata_section.major && metadata->minor > metadata_section.minor)) {
+                sdUnmount();
+                display_end();
+                CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_V) |= 0x400; // Enable AHUB clock.
+                CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_Y) |= 0x40;  // Enable APE clock.
+                PMC(APBDEV_PMC_SCRATCH49) = 69;
+                ((void (*)())PAYLOAD_ADDR)();
+            }
+        }
     }
     SYSREG(AHB_AHB_SPARE_REG) &= (vu32)0xFFFFFF9F;
     PMC(APBDEV_PMC_SCRATCH49) = 0;

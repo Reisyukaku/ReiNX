@@ -230,6 +230,11 @@ static u32 PRC_ID_RCV_800[] =
 extern kippatchset_t kip_patches[];
 
 typedef struct {
+    u32 ini_off;
+    u32 krnlLdr_off;
+} KernelNewOffs;
+
+typedef struct {
     u8 Hash[0x20];
     u32 SvcVerify;
     u32 SvcDebug;
@@ -238,8 +243,7 @@ typedef struct {
     u32 GenericOff;
     u8 CodeSndOff;
     u8 CodeRcvOff;
-    size_t hash_offset;
-    size_t hash_size;
+    u32 krnl_offs;
 } KernelMeta;
 
 static const KernelMeta kernelInfo[] = {
@@ -253,7 +257,6 @@ static const KernelMeta kernelInfo[] = {
         0,
         4,
         4,
-        0,
         0
     },
     {   //2.0.0
@@ -266,7 +269,6 @@ static const KernelMeta kernelInfo[] = {
         0,
         4,
         4,
-        0,
         0
     },
     {   //3.0.0
@@ -279,7 +281,6 @@ static const KernelMeta kernelInfo[] = {
         0,
         4,
         4,
-        0,
         0
     },
     {   //3.0.2
@@ -292,7 +293,6 @@ static const KernelMeta kernelInfo[] = {
         0,
         4,
         4,
-        0,
         0
     },
     {   //4.0.0
@@ -305,7 +305,6 @@ static const KernelMeta kernelInfo[] = {
         0,
         8,
         4,
-        0,
         0
     },
     {   //5.0.0
@@ -318,7 +317,6 @@ static const KernelMeta kernelInfo[] = {
         0x38C2C,
         8,
         8,
-        0,
         0
     },
     {   //6.0.0
@@ -331,7 +329,6 @@ static const KernelMeta kernelInfo[] = {
         0x3A8CC,
         0x10,
         0x10,
-        0,
         0
     },
     {   //7.0.0
@@ -344,11 +341,10 @@ static const KernelMeta kernelInfo[] = {
         0x3C6E0,
         0x10,
         0x10,
-        0,
         0
     },
     {   //8.0.0
-        {0xA6, 0xAD, 0x5D, 0x7F, 0xCF, 0x25, 0x80, 0xAE, 0xE6, 0x57, 0x9F, 0x6F, 0xC5, 0xC5, 0xF6, 0x13,
+        {0xA6, 0xAD, 0x5D, 0x7F, 0xCF, 0x25, 0x80, 0xAE, 0xE6, 0x57, 0x9F, 0x6F, 0xC5, 0xC5, 0xF6, 0x13, 
         0x77, 0x23, 0xAC, 0x88, 0x79, 0x76, 0xF7, 0x25, 0x06, 0x16, 0x35, 0x3B, 0x3F, 0xA7, 0x59, 0x49},
         0x4D15C,
         0x5BFAC,
@@ -357,8 +353,7 @@ static const KernelMeta kernelInfo[] = {
         0x3FAD0,
         0x10,
         0x10,
-        0x1A8,
-        0x95000 - 0x1A8
+        0x168
     },
 };
 
