@@ -34,9 +34,9 @@ static u8 *bctBuf = NULL;
 char id[15] = {0};
 
 const volatile metadata_t __attribute__((section (".metadata"))) metadata_section = {
-	.magic = UWU0_MAGIC,
-	.major = VERSION_MAJOR,
-	.minor = VERSION_MINOR
+    .magic = UWU0_MAGIC,
+    .major = VERSION_MAJOR,
+    .minor = VERSION_MINOR
 };
 
 int drawSplash() {
@@ -139,7 +139,7 @@ u8 loadFirm() {
     print("%k\nPatching HOS:\n%k", WHITE, DEFAULT_TEXT_COL);
     patchWarmboot(pk11Offs->warmboot_base);
     patchSecmon(pk11Offs->secmon_base, pk11Offs->kb);
-    //patchKernel(dec_pkg2);
+    patchKernel(dec_pkg2);
     patchKernelExtensions(&kip1_info);
 
     // Build Package2.
@@ -261,21 +261,21 @@ void firmware() {
 
     //Chainload ReiNX if applicable
     if(PMC(APBDEV_PMC_SCRATCH49) != 69 && PMC(APBDEV_PMC_SCRATCH49) != 67 && fopen("/ReiNX.bin", "rb")) {
-				size_t size = fsize();
-				u8 *payload = malloc(size);
+        size_t size = fsize();
+        u8 *payload = malloc(size);
         fread((void*)PAYLOAD_ADDR, size, 1);
         fclose();
-				metadata_t *metadata = (metadata_t*)(payload + METADATA_OFFSET);
-				if(metadata->magic == metadata_section.magic) {
-					if(metadata->major > metadata_section.major || (metadata->major == metadata_section.major && metadata->minor > metadata_section.minor)) {
-		        sdUnmount();
-		        display_end();
-		        CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_V) |= 0x400; // Enable AHUB clock.
-		        CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_Y) |= 0x40;  // Enable APE clock.
-		        PMC(APBDEV_PMC_SCRATCH49) = 69;
-		        ((void (*)())PAYLOAD_ADDR)();
-					}
-				}
+        metadata_t *metadata = (metadata_t*)(payload + METADATA_OFFSET);
+        if(metadata->magic == metadata_section.magic) {
+            if(metadata->major > metadata_section.major || (metadata->major == metadata_section.major && metadata->minor > metadata_section.minor)) {
+                sdUnmount();
+                display_end();
+                CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_V) |= 0x400; // Enable AHUB clock.
+                CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_Y) |= 0x40;  // Enable APE clock.
+                PMC(APBDEV_PMC_SCRATCH49) = 69;
+                ((void (*)())PAYLOAD_ADDR)();
+            }
+        }
     }
     SYSREG(AHB_AHB_SPARE_REG) &= (vu32)0xFFFFFF9F;
     PMC(APBDEV_PMC_SCRATCH49) = 0;

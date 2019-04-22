@@ -144,8 +144,8 @@ void pkg1_unpack(pk11_offs *offs, u32 pkg1Off) {
 }
 
 bool hasCustomWb() {
-		if (customWb)
-			return customWb;
+        if (customWb)
+            return customWb;
     if(fopen("/ReiNX/warmboot.bin", "rb") != 0) {
         customWb = true;
         fclose();
@@ -158,8 +158,8 @@ bool hasCustomWb() {
 }
 
 bool hasCustomSecmon() {
-		if (customSecmon)
-			return customSecmon;
+        if (customSecmon)
+            return customSecmon;
     if(fopen("/ReiNX/secmon.bin", "rb") != 0) {
         customSecmon = true;
         fclose();
@@ -173,7 +173,7 @@ bool hasCustomSecmon() {
 
 bool hasCustomKern() {
     if (customKernel)
-			return customKernel;
+            return customKernel;
     if(fopen("/ReiNX/kernel.bin", "rb") != 0) {
         customKernel = true;
         fclose();
@@ -182,35 +182,26 @@ bool hasCustomKern() {
 }
 
 
-static u32 build_ini1(u8 *pdst, pkg2_hdr_t *hdr, link_t *kips_info, bool new_pkg2, bool cust_sec)
+static u32 buildIni1(pkg2_hdr_t *hdr, void *ini, link_t *kips_info, bool hasCustSecmon)
 {
     u32 ini1_size = sizeof(pkg2_ini1_t);
-    pkg2_ini1_t *ini1 = (pkg2_ini1_t *)pdst;
+    pkg2_ini1_t *ini1 = (pkg2_ini1_t *)ini;
     memset(ini1, 0, sizeof(pkg2_ini1_t));
     ini1->magic = INI1_MAGIC;
-    pdst += sizeof(pkg2_ini1_t);
+    ini += sizeof(pkg2_ini1_t);
     LIST_FOREACH_ENTRY(pkg2_kip1_info_t, ki, kips_info, link)
     {
         print("adding kip1 '%s' @ %08X (%08X)\n", ki->kip1->name, (u32)ki->kip1, ki->size);
-        memcpy(pdst, ki->kip1, ki->size);
-        pdst += ki->size;
+        memcpy(ini, ki->kip1, ki->size);
+        ini += ki->size;
         ini1_size += ki->size;
         ini1->num_procs++;
     }
     ini1->size = ini1_size;
-    if (!new_pkg2)
-    {
-        hdr->sec_size[PKG2_SEC_INI1] = ini1_size;
-        hdr->sec_off[PKG2_SEC_INI1] = 0x14080000;
-        if (!cust_sec)
-            se_aes_crypt_ctr(8, ini1, ini1_size, ini1, ini1_size, &hdr->sec_ctr[PKG2_SEC_INI1 * 0x10]);
-    }
-    else
-    {
-        hdr->sec_size[PKG2_SEC_INI1] = 0;
-        hdr->sec_off[PKG2_SEC_INI1] = 0;
-    }
-
+    
+    if (!hasCustSecmon) 
+        se_aes_crypt_ctr(8, ini1, ini1_size, ini1, ini1_size, &hdr->sec_ctr[PKG2_SEC_INI1 * 0x10]);
+    
     return ini1_size;
 }
 
@@ -219,48 +210,49 @@ void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info, pk11_o
     bool hasCustSecmon = hasCustomSecmon();
     bool new_pkg2 = pk11Offs->hos >= HOS_FIRMWARE_VERSION_800;
 
-    // Signature.
+    //Signature.
     memset(pdst, 0, 0x100);
     pdst += 0x100;
 
-    // Header.
+    //Header.
     pkg2_hdr_t *hdr = (pkg2_hdr_t *)pdst;
     memset(hdr, 0, sizeof(pkg2_hdr_t));
     pdst += sizeof(pkg2_hdr_t);
     hdr->magic = PKG2_MAGIC;
-    if (new_pkg2)
-        hdr->base = 0x60000;
-    else
-        hdr->base = 0x10000000;
-    print("kernel @ %08X (%08X)\n", (u32)kernel, kernel_size);
+    hdr->base = new_pkg2 ? 0x60000 : 0x10000000;
 
-    // Kernel.
+    //Read custom kern if applicable
     size_t extSize = 0;
     u8 *extKern = LoadExtFile("/ReiNX/kernel.bin", &extSize);
-    memcpy(pdst, extKern == NULL ? kernel : extKern, extKern == NULL ? kernel_size : extSize);
-    if (new_pkg2) {
-        *(u32 *)(pdst + 0x168) = kernel_size;
-        kernel_size += build_ini1(pdst + kernel_size, hdr, kips_info, new_pkg2, hasCustSecmon);
-        hdr->sec_off[PKG2_SEC_KERNEL] = 0x60000;
-    } else
-        hdr->sec_off[PKG2_SEC_KERNEL] = 0x10000000;
-    hdr->sec_size[PKG2_SEC_KERNEL] = kernel_size;
+    memcpy(hdr->data, extKern == NULL ? kernel : extKern, extKern == NULL ? kernel_size : extSize);
+    print("Kernel size: %X\n", kernel_size);
+    
+    //Encrpyt kern if no exo
     if(!hasCustSecmon)
-        se_aes_crypt_ctr(8, pdst, kernel_size, pdst, kernel_size, &hdr->sec_ctr[PKG2_SEC_KERNEL * 0x10]);
+        se_aes_crypt_ctr(8, hdr->data, kernel_size, hdr->data, kernel_size, &hdr->sec_ctr[PKG2_SEC_KERNEL * 0x10]);
     pdst += kernel_size;
-
-    // INI1.
-    u32 ini1_size = 0;
-    if (!new_pkg2) {
-        hdr->sec_size[PKG2_SEC_INI1] = build_ini1(pdst + kernel_size, hdr, kips_info, new_pkg2, hasCustSecmon);
+    
+    //Build ini1
+    size_t iniSize = buildIni1(hdr, pdst, kips_info, hasCustSecmon); 
+    
+    //Newer (8.0+) pk21 embeds ini1 in kernel section, so add ini1 size to kernel size
+    if (new_pkg2) {
+        *(u32*)(hdr->data + kernelInfo[8].krnl_offs) = kernel_size; //TODO
+        kernel_size += iniSize;
     }
+    
+    //Fill in rest of the header
+    hdr->sec_off[PKG2_SEC_KERNEL] = hdr->base;
+    hdr->sec_size[PKG2_SEC_KERNEL] = kernel_size;
+    hdr->sec_off[PKG2_SEC_INI1] = new_pkg2 ? 0 : 0x14080000;
+    hdr->sec_size[PKG2_SEC_INI1] = new_pkg2 ? 0 : iniSize;
 
     // Encrypt header.
-    *(u32 *)hdr->ctr = 0x100 + sizeof(pkg2_hdr_t) + kernel_size + ini1_size;
+    *(u32 *)hdr->ctr = 0x100 + sizeof(pkg2_hdr_t) + kernel_size + hdr->sec_size[PKG2_SEC_INI1];
     if (!hasCustSecmon)
         se_aes_crypt_ctr(8, hdr, sizeof(pkg2_hdr_t), hdr, sizeof(pkg2_hdr_t), hdr);
     memset(hdr->ctr, 0 , 0x10);
-    *(u32 *)hdr->ctr = 0x100 + sizeof(pkg2_hdr_t) + kernel_size + ini1_size;
+    *(u32 *)hdr->ctr = 0x100 + sizeof(pkg2_hdr_t) + kernel_size + hdr->sec_size[PKG2_SEC_INI1];
 }
 
 size_t calcKipSize(pkg2_kip1_t *kip1) {
@@ -351,83 +343,6 @@ int kippatch_apply(u8 *kipdata, u64 kipdata_len, kippatch_t *patch) {
     }
 
     return 0;
-}
-
-u32 *getSndPayload(u32 id, size_t *size) {
-    u32 *ret;
-    switch(id){
-        case 0:
-            *size = sizeof(PRC_ID_SND_100);
-            ret = PRC_ID_SND_100;
-            break;
-        case 1:
-            *size = sizeof(PRC_ID_SND_200);
-            ret = PRC_ID_SND_200;
-            break;
-        case 2:
-            *size = sizeof(PRC_ID_SND_300);
-            ret = PRC_ID_SND_300;
-            break;
-        case 3:
-            *size = sizeof(PRC_ID_SND_302);
-            ret = PRC_ID_SND_302;
-            break;
-        case 4:
-            *size = sizeof(PRC_ID_SND_400);
-            ret = PRC_ID_SND_400;
-            break;
-        case 5:
-            *size = sizeof(PRC_ID_SND_500);
-            ret = PRC_ID_SND_500;
-            break;
-        case 6:
-            *size = sizeof(PRC_ID_SND_600);
-            ret = PRC_ID_SND_600;
-        case 7:
-            *size = sizeof(PRC_ID_SND_700);
-            ret = PRC_ID_SND_700;
-            break;
-    }
-    return ret;
-}
-
-u32 *getRcvPayload(u32 id, size_t *size) {
-    u32 *ret;
-    switch(id){
-        case 0:
-            *size = sizeof(PRC_ID_RCV_100);
-            ret = PRC_ID_RCV_100;
-            break;
-        case 1:
-            *size = sizeof(PRC_ID_RCV_200);
-            ret = PRC_ID_RCV_200;
-            break;
-        case 2:
-            *size = sizeof(PRC_ID_RCV_300);
-            ret = PRC_ID_RCV_300;
-            break;
-        case 3:
-            *size = sizeof(PRC_ID_RCV_302);
-            ret = PRC_ID_RCV_302;
-            break;
-        case 4:
-            *size = sizeof(PRC_ID_RCV_400);
-            ret = PRC_ID_RCV_400;
-            break;
-        case 5:
-            *size = sizeof(PRC_ID_RCV_500);
-            ret = PRC_ID_RCV_500;
-            break;
-        case 6:
-            *size = sizeof(PRC_ID_RCV_600);
-            ret = PRC_ID_RCV_600;
-            break;
-        case 7:
-            *size = sizeof(PRC_ID_RCV_700);
-            ret = PRC_ID_RCV_700;
-            break;
-    }
-    return ret;
 }
 
 int nca_patch(u8 * kipdata, u64 kipdata_len) {

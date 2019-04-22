@@ -234,9 +234,11 @@ void patchKernel(pkg2_hdr_t *pkg2){
             if(memcmp(hash, kernelInfo[i].Hash, 0x20)) continue;
             print("Patching kernel %d\n", i);
 
-            //ID Send
+            //Find free space
             uPtr freeSpace = getFreeSpace((void*)(kern+0x45000), 0x200, 0x20000) + 0x45000;     //Find area to write payload
             print("Kernel Freespace: 0x%08X\n", freeSpace);
+            
+            //ID Send
             size_t payloadSize;
             u32 *sndPayload = getSndPayload(i, &payloadSize);
             *(vu32*)(kern + kernelInfo[i].SendOff) = _B(kernelInfo[i].SendOff, freeSpace);      //write hook to payload
@@ -293,4 +295,90 @@ pkg2_kip1_info_t* find_by_tid(link_t* kip_list, u64 tid) {
             return ki;
     }
     return NULL;
+}
+
+u32 *getSndPayload(u32 id, size_t *size) {
+    u32 *ret;
+    switch(id){
+        case 0:
+            *size = sizeof(PRC_ID_SND_100);
+            ret = PRC_ID_SND_100;
+            break;
+        case 1:
+            *size = sizeof(PRC_ID_SND_200);
+            ret = PRC_ID_SND_200;
+            break;
+        case 2:
+            *size = sizeof(PRC_ID_SND_300);
+            ret = PRC_ID_SND_300;
+            break;
+        case 3:
+            *size = sizeof(PRC_ID_SND_302);
+            ret = PRC_ID_SND_302;
+            break;
+        case 4:
+            *size = sizeof(PRC_ID_SND_400);
+            ret = PRC_ID_SND_400;
+            break;
+        case 5:
+            *size = sizeof(PRC_ID_SND_500);
+            ret = PRC_ID_SND_500;
+            break;
+        case 6:
+            *size = sizeof(PRC_ID_SND_600);
+            ret = PRC_ID_SND_600;
+            break;
+        case 7:
+            *size = sizeof(PRC_ID_SND_700);
+            ret = PRC_ID_SND_700;
+            break;
+        case 8:
+            *size = sizeof(PRC_ID_SND_800);
+            ret = PRC_ID_SND_800;
+            break;
+    }
+    return ret;
+}
+
+u32 *getRcvPayload(u32 id, size_t *size) {
+    u32 *ret;
+    switch(id){
+        case 0:
+            *size = sizeof(PRC_ID_RCV_100);
+            ret = PRC_ID_RCV_100;
+            break;
+        case 1:
+            *size = sizeof(PRC_ID_RCV_200);
+            ret = PRC_ID_RCV_200;
+            break;
+        case 2:
+            *size = sizeof(PRC_ID_RCV_300);
+            ret = PRC_ID_RCV_300;
+            break;
+        case 3:
+            *size = sizeof(PRC_ID_RCV_302);
+            ret = PRC_ID_RCV_302;
+            break;
+        case 4:
+            *size = sizeof(PRC_ID_RCV_400);
+            ret = PRC_ID_RCV_400;
+            break;
+        case 5:
+            *size = sizeof(PRC_ID_RCV_500);
+            ret = PRC_ID_RCV_500;
+            break;
+        case 6:
+            *size = sizeof(PRC_ID_RCV_600);
+            ret = PRC_ID_RCV_600;
+            break;
+        case 7:
+            *size = sizeof(PRC_ID_RCV_700);
+            ret = PRC_ID_RCV_700;
+            break;
+        case 8:
+            *size = sizeof(PRC_ID_RCV_800);
+            ret = PRC_ID_RCV_800;
+            break;
+    }
+    return ret;
 }
