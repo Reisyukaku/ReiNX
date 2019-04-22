@@ -18,6 +18,7 @@
 #include "error.h"
 #include "fs.h"
 #include "package.h"
+#include "patches.h"
 #include "kippatches/fs.inc"
 
 bool customSecmon = false;

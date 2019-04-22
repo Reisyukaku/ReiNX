@@ -57,7 +57,7 @@ pk11_offs *distinguishVersions(u32 kb) {
             return &_pk11_offs[0];
         }
     } else if ((kb == KB_FIRMWARE_VERSION_700)) {
-        if (strcmp(id, "20181218175730")) {
+        if (strcmp(id, "20181218175730") != 0 && strcmp(id, "20190208150037") != 0) {
             return &_pk11_offs[9];
         } else {
             return &_pk11_offs[8];
@@ -78,7 +78,7 @@ u8 loadFirm() {
     bctBuf = ReadBoot0(&storage);
     u32 ver = (*(u32*)(bctBuf+0x2330)) - 1;
     u32 pkg11_size = *(u32 *)(bctBuf + 0x233C);
-    for (u32 i = 0; _pk11_offs[i].pkg11_off; i++) {   //TODO distinguish 1.x & 2.x
+    for (u32 i = 0; _pk11_offs[i].pkg11_off; i++) {
         if(_pk11_offs[i].kb == ver){
             pk11Offs = (pk11_offs *)&_pk11_offs[i];
             break;
@@ -130,8 +130,8 @@ u8 loadFirm() {
 
     // Unpack Package2.
     print("Unpacking package2...\n");
-
     pkg2_hdr_t *dec_pkg2 = unpackFirmwarePackage(pkg2);
+
     LIST_INIT(kip1_info);
     pkg2_parse_kips(&kip1_info, dec_pkg2);
 
