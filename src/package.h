@@ -90,6 +90,7 @@ typedef struct {
     u32 sec_map[3];
     u32 secmon_base;
     u32 warmboot_base;
+    u32 hos;
 } pk11_offs;
 
 typedef struct {

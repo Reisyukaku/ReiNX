@@ -132,42 +132,6 @@ u8 loadFirm() {
     print("Unpacking package2...\n");
 
     pkg2_hdr_t *dec_pkg2 = unpackFirmwarePackage(pkg2);
-    //If firmware is 8.0, remake package2 by moving ini1 into its section from kernel
-    //TODO: find better way to differentiate the firmware version that isn't TSEC firmware offset
-    if (pk11Offs->tsec_off == 0xE00 && pk11Offs->kb == KB_FIRMWARE_VERSION_800) {
-        KernelNewOffs *kOffs = (KernelNewOffs*)(dec_pkg2->data + kernelInfo[8].krnl_offs); //TODO
-        print("New kernel detected!\n");
-        print("Ini off: %X\n", kOffs->ini_off);
-        print("KernelLdr off: %X\n", kOffs->krnlLdr_off);
-        
-        pkg2_ini1_t *old_ini1 = (pkg2_ini1_t *)(dec_pkg2->data + kOffs->ini_off);
-        dec_pkg2->sec_off[PKG2_SEC_INI1] = dec_pkg2->sec_off[PKG2_SEC_KERNEL] + dec_pkg2->sec_size[PKG2_SEC_KERNEL];
-        size_t rebuilt_package2_size = sizeof(pkg2_hdr_t) + dec_pkg2->sec_size[0] + ALIGN(old_ini1->size, 4);
-
-        pkg2_hdr_t *new_pkg2 = (pkg2_hdr_t *)malloc(rebuilt_package2_size);
-
-        memcpy(new_pkg2, dec_pkg2, sizeof(pkg2_hdr_t));
-        memcpy(new_pkg2->data, dec_pkg2->data, dec_pkg2->sec_size[0]);
-        memcpy(new_pkg2->data + dec_pkg2->sec_size[0], old_ini1, old_ini1->size);
-        new_pkg2->sec_size[1] = ALIGN(old_ini1->size, 4);
-
-        uint8_t *data = new_pkg2->data;
-
-        for (unsigned int section = 0; section < 3; section++) {
-            size_t sz = (size_t)new_pkg2->sec_size[section];
-            if(!sz)
-                continue;
-
-            se_calc_sha256(&(new_pkg2->sec_sha256[section * 0x20]), data, sz);
-            data += sz;
-        }
-
-        u32 *ctrs = (u32 *)(new_pkg2->ctr);
-        uint32_t package_size = ctrs[0] ^ ctrs[2] ^ ctrs[3];
-        ctrs[3] ^= (package_size ^ rebuilt_package2_size);
-        dec_pkg2 = new_pkg2;
-    }
-    print("Parsing kips\n");
     LIST_INIT(kip1_info);
     pkg2_parse_kips(&kip1_info, dec_pkg2);
 
@@ -175,7 +139,7 @@ u8 loadFirm() {
     print("%k\nPatching HOS:\n%k", WHITE, DEFAULT_TEXT_COL);
     patchWarmboot(pk11Offs->warmboot_base);
     patchSecmon(pk11Offs->secmon_base, pk11Offs->kb);
-    patchKernel(dec_pkg2);
+    //patchKernel(dec_pkg2);
     patchKernelExtensions(&kip1_info);
 
     // Build Package2.
@@ -256,7 +220,6 @@ void launch() {
         *BOOT_STATE_ADDR = (pk11Offs->kb < KB_FIRMWARE_VERSION_400 ? BOOT_PKG2_LOADED : BOOT_PKG2_LOADED_4X);
         *SECMON_STATE_ADDR = 0;
     }
-    
     // Disable display.
     display_end();
 
@@ -286,7 +249,6 @@ void firmware() {
     gfx_clear_color(&gfx_ctxt, BLACK);
     gfx_con_init(&gfx_con, &gfx_ctxt);
     gfx_con_setcol(&gfx_con, DEFAULT_TEXT_COL, 0, 0);
-    u32 currBut = btn_read();
 
     //Mount SD
     if (!sdMount()) {
@@ -299,27 +261,27 @@ void firmware() {
 
     //Chainload ReiNX if applicable
     if(PMC(APBDEV_PMC_SCRATCH49) != 69 && PMC(APBDEV_PMC_SCRATCH49) != 67 && fopen("/ReiNX.bin", "rb")) {
-        size_t size = fsize();
-        u8 *payload = malloc(size);
+				size_t size = fsize();
+				u8 *payload = malloc(size);
         fread((void*)PAYLOAD_ADDR, size, 1);
         fclose();
-        metadata_t *metadata = (metadata_t*)(payload + METADATA_OFFSET);
-        if(metadata->magic == metadata_section.magic) {
-            if(metadata->major > metadata_section.major || (metadata->major == metadata_section.major && metadata->minor > metadata_section.minor)) {
-                sdUnmount();
-                display_end();
-                CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_V) |= 0x400; // Enable AHUB clock.
-                CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_Y) |= 0x40;  // Enable APE clock.
-                PMC(APBDEV_PMC_SCRATCH49) = 69;
-                ((void (*)())PAYLOAD_ADDR)();
-            }
-        }
+				metadata_t *metadata = (metadata_t*)(payload + METADATA_OFFSET);
+				if(metadata->magic == metadata_section.magic) {
+					if(metadata->major > metadata_section.major || (metadata->major == metadata_section.major && metadata->minor > metadata_section.minor)) {
+		        sdUnmount();
+		        display_end();
+		        CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_V) |= 0x400; // Enable AHUB clock.
+		        CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_Y) |= 0x40;  // Enable APE clock.
+		        PMC(APBDEV_PMC_SCRATCH49) = 69;
+		        ((void (*)())PAYLOAD_ADDR)();
+					}
+				}
     }
     SYSREG(AHB_AHB_SPARE_REG) &= (vu32)0xFFFFFF9F;
     PMC(APBDEV_PMC_SCRATCH49) = 0;
 
     //Chainload recovery if applicable
-    if((currBut & BTN_VOL_UP) && !(currBut & BTN_VOL_DOWN)){
+    if(btn_read() & BTN_VOL_UP){
         if(fopen("/ReiNX/Recovery.bin", "rb") != 0) {
             fread((void*)PAYLOAD_ADDR, fsize(), 1);
             fclose();
@@ -340,7 +302,7 @@ void firmware() {
     }
 
     //Determine if booting in verbose mode
-    if ((currBut & BTN_VOL_DOWN) && !(currBut & BTN_VOL_UP)) {
+    if (btn_read() & BTN_VOL_DOWN) {
         print("%kWelcome to ReiNX %d.%d!\n%k", WHITE, VERSION_MAJOR, VERSION_MINOR, DEFAULT_TEXT_COL);
     } else if (drawSplash()) {
         gfx_con.mute = 1;
