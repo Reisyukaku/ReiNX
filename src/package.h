@@ -84,13 +84,14 @@ typedef struct _pkg2_kip1_info_t
 } pkg2_kip1_info_t;
 
 typedef struct {
+    char id[15];
     u32 kb;
+    u32 hos;
     u32 tsec_off;
     u32 pkg11_off;
     u32 sec_map[3];
     u32 secmon_base;
     u32 warmboot_base;
-    u32 hos;
 } pk11_offs;
 
 typedef struct {

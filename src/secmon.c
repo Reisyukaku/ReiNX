@@ -15,7 +15,7 @@
  */
 
 #include <string.h>
-
+#include "secmon.h"
 #include "hwinit.h"
 
 typedef struct _exo_cfg_t
@@ -44,31 +44,14 @@ typedef struct _atm_meta_t
 #define  EXO_FLAG_DBG_PRIV  (1 << 1)
 #define  EXO_FLAG_DBG_USER  (1 << 2)
 
-void config_exosphere(char *id, u32 kb, void *warmboot)
-{
+void config_exosphere(pk11_offs *pkoff) {
     u32 exoFwNo = 0;
     u32 exoFlags = 0;
 
     volatile exo_cfg_t *exo_cfg_depr = (exo_cfg_t *)EXO_CFG_DEPR_ADDR;
     volatile exo_cfg_t *exo_cfg = (exo_cfg_t *)EXO_CFG_ADDR;
 
-    switch (kb)
-    {
-    case KB_FIRMWARE_VERSION_200:
-        if (!strcmp(id, "20161121183008"))
-            exoFwNo = 1;
-        else
-            exoFwNo = 2;
-        break;
-    case KB_FIRMWARE_VERSION_300:
-        exoFwNo = 3;
-        break;
-    default:
-        exoFwNo = kb + 1;
-        break;
-    }
-
-    if (kb == KB_FIRMWARE_VERSION_620)
+    if (pkoff->hos == HOS_FIRMWARE_VERSION_620)
         exoFlags |= EXO_FLAG_620_KGN;
 
     // To avoid problems, make private debug mode always on.
@@ -78,18 +61,18 @@ void config_exosphere(char *id, u32 kb, void *warmboot)
     exo_cfg_depr->magic = EXO_MAGIC_VAL;
     exo_cfg->magic = EXO_MAGIC_VAL;
 
-    exo_cfg_depr->fwno = exoFwNo;
-    exo_cfg->fwno = exoFwNo;
+    exo_cfg_depr->fwno = pkoff->hos;
+    exo_cfg->fwno = pkoff->hos;
 
     exo_cfg_depr->flags = exoFlags;
     exo_cfg->flags = exoFlags;
 
     // If warmboot is lp0fw, add in RSA modulus.
-    volatile wb_cfg_t *wb_cfg = (wb_cfg_t *)(warmboot + ATM_WB_HEADER_OFF);
+    volatile wb_cfg_t *wb_cfg = (wb_cfg_t *)((void*)pkoff->warmboot_base + ATM_WB_HEADER_OFF);
 
     if (wb_cfg->magic == ATM_WB_MAGIC)
     {
-        wb_cfg->fwno = exoFwNo;
+        wb_cfg->fwno = pkoff->hos;
 
         sdmmc_storage_t storage;
         sdmmc_t sdmmc;
@@ -107,6 +90,6 @@ void config_exosphere(char *id, u32 kb, void *warmboot)
         else
             rsa_mod[0x10] = 0x37;
 
-        memcpy(warmboot + 0x10, rsa_mod + 0x10, 0x100);
+        memcpy((void*)pkoff->warmboot_base + 0x10, rsa_mod + 0x10, 0x100);
     }
 }

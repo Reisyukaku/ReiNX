@@ -14,11 +14,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _SECMON_EXO_H_
-#define _SECMON_EXO_H_
+#pragma once
 
 #include "hwinit/types.h"
+#include "package.h"
 
-void config_exosphere(const char *id, u32 kb, void *warmboot);
-
-#endif
+void config_exosphere(pk11_offs *pkoff);

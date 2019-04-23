@@ -29,8 +29,6 @@
 #include "sept.h"
 
 static pk11_offs *pk11Offs = NULL;
-static u8 *bctBuf = NULL;
-
 char id[15] = {0};
 
 const volatile metadata_t __attribute__((section (".metadata"))) metadata_section = {
@@ -49,22 +47,6 @@ int drawSplash() {
     return 0;
 }
 
-pk11_offs *distinguishVersions(u32 kb) {
-    if (kb == KB_FIRMWARE_VERSION_200) {
-        if (strcmp(id, "20161121183008")) {
-            return &_pk11_offs[1];
-        } else {
-            return &_pk11_offs[0];
-        }
-    } else if ((kb == KB_FIRMWARE_VERSION_700)) {
-        if (strcmp(id, "20181218175730") != 0 && strcmp(id, "20190208150037") != 0) {
-            return &_pk11_offs[9];
-        } else {
-            return &_pk11_offs[8];
-        }
-    }
-}
-
 u8 loadFirm() {
     print("%k\nSetting up HOS:\n%k", WHITE, DEFAULT_TEXT_COL);
     sdmmc_storage_t storage;
@@ -73,25 +55,24 @@ u8 loadFirm() {
     //Init nand
     sdmmc_storage_init_mmc(&storage, &sdmmc, SDMMC_4, SDMMC_BUS_WIDTH_8, 4);
     sdmmc_storage_set_mmc_partition(&storage, 1);
-
+    
     //Read Boot0
-    bctBuf = ReadBoot0(&storage);
-    u32 ver = (*(u32*)(bctBuf+0x2330)) - 1;
+    u8 *bctBuf = ReadBoot0(&storage);
     u32 pkg11_size = *(u32 *)(bctBuf + 0x233C);
-    for (u32 i = 0; _pk11_offs[i].pkg11_off; i++) {
-        if(_pk11_offs[i].kb == ver){
-            pk11Offs = (pk11_offs *)&_pk11_offs[i];
-            break;
-        }
-    }
-    print("Bootloader version: %d\n", pk11Offs->kb);
     free(bctBuf);
 
     // Read package1.
     u8 *pkg1ldr = ReadPackage1Ldr(&storage);
     memcpy(id, pkg1ldr + 0x10, 14);
-    if (pk11Offs->kb == KB_FIRMWARE_VERSION_100 || pk11Offs->kb == KB_FIRMWARE_VERSION_700)
-        pk11Offs = distinguishVersions(pk11Offs->kb);
+    for (u32 i = 0; _pk11_offs[i].pkg11_off; i++) {
+        if(!strcmp(_pk11_offs[i].id, id)){
+            pk11Offs = (pk11_offs *)&_pk11_offs[i];
+            break;
+        }
+    }
+    
+    print("Firmware kb: %d\n", pk11Offs->kb);
+    print("Firmware ver: %d\n", pk11Offs->hos);
     
     // Decrypt package1 and setup warmboot.
     print("Decrypting Package1...\n");
@@ -186,7 +167,7 @@ void launch() {
     }
 
     if (hasCustomSecmon())
-        config_exosphere(id, pk11Offs->kb, (void *)pk11Offs->warmboot_base);
+        config_exosphere((void *)pk11Offs);
 
     //We're done with SD now
     sdUnmount();
