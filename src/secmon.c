@@ -51,6 +51,8 @@ void config_exosphere(pk11_offs *pkoff) {
     volatile exo_cfg_t *exo_cfg_depr = (exo_cfg_t *)EXO_CFG_DEPR_ADDR;
     volatile exo_cfg_t *exo_cfg = (exo_cfg_t *)EXO_CFG_ADDR;
 
+    exoFwNo = pkoff->hos;
+
     if (pkoff->hos == HOS_FIRMWARE_VERSION_620)
         exoFlags |= EXO_FLAG_620_KGN;
 
@@ -67,22 +69,20 @@ void config_exosphere(pk11_offs *pkoff) {
     exo_cfg_depr->flags = exoFlags;
     exo_cfg->flags = exoFlags;
 
-    // If warmboot is lp0fw, add in RSA modulus.
-    volatile wb_cfg_t *wb_cfg = (wb_cfg_t *)((void*)pkoff->warmboot_base + ATM_WB_HEADER_OFF);
+    volatile wb_cfg_t *wb_cfg = (wb_cfg_t *)((void *)pkoff->warmboot_base + ATM_WB_HEADER_OFF);
 
-    if (wb_cfg->magic == ATM_WB_MAGIC)
-    {
+    if (wb_cfg->magic == ATM_WB_MAGIC) {
         wb_cfg->fwno = pkoff->hos;
 
         sdmmc_storage_t storage;
         sdmmc_t sdmmc;
 
-        // Set warmboot binary rsa modulus.
-        u8 *rsa_mod = (u8 *)malloc(512);
+        u8 *rsa_mod = malloc(0x200);
 
         sdmmc_storage_init_mmc(&storage, &sdmmc, SDMMC_4, SDMMC_BUS_WIDTH_8, 4);
         sdmmc_storage_set_mmc_partition(&storage, 1);
         sdmmc_storage_read(&storage, 1, 1, rsa_mod);
+        sdmmc_storage_end(&storage);
 
         // Patch AutoRCM out.
         if ((FUSE(FUSE_RESERVED_ODMX(4)) & 3) != 3)
