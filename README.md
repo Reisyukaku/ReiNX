@@ -38,7 +38,7 @@ To compile with Docker, `chmod +x docker-build.sh` and run the shell script `./d
 
 [HERE](https://gbatemp.net/threads/official-reinx-thread.512203/)
 
-**Offical Installation guide**
+**Official Installation guide**
 
 [HERE](https://reinx.guide/)
 
