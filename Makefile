@@ -49,7 +49,7 @@ clean:
 
 
 $(dir_out)/sysmodules: $(dir_sysmod)
-	@$(MAKE) -C $(dir_sysmod)
+	@$(MAKE) ver_maj=$(ver_major) ver_min=$(ver_minor) -C $(dir_sysmod)
 	@mkdir -p "$(dir_out)/ReiNX/sysmodules"
 	@mkdir -p "$(dir_out)/ReiNX/sysmodules.dis"
 	@cp $(dir_sysmod)/loader/loader.kip $(dir_out)/ReiNX/sysmodules/
