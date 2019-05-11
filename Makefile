@@ -61,8 +61,8 @@ $(dir_out)/sysmodules: $(dir_sysmod)
 	@mkdir -p "$(dir_out)/ReiNX/titles/010000000000000D/flags"
 	@cp $(dir_sysmod)/fatal/fatal.nsp $(dir_out)/ReiNX/titles/0100000000000034/exefs.nsp
 	@cp $(dir_sysmod)/dmnt/dmnt.nsp $(dir_out)/ReiNX/titles/010000000000000D/exefs.nsp
+	@cp $(dir_sysmod)/creport/creport.nsp $(dir_out)/ReiNX/titles/0100000000000036/exefs.nsp
 	@touch $(dir_out)/ReiNX/titles/010000000000000D/flags/boot2.flag
-	@cp -a $(dir_sysmod)/creport/0100000000000036/. $(dir_out)/ReiNX/titles/0100000000000036/
 
 
 $(dir_out)/$(name).bin: $(dir_build)/$(name).elf
