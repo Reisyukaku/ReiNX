@@ -10,7 +10,7 @@ OBJCOPY = $(DEVKITARM)/bin/arm-none-eabi-objcopy
 
 name := ReiNX
 ver_major  := 2
-ver_minor  := 2
+ver_minor  := 3
 
 dir_source := src
 dir_data := data
@@ -58,8 +58,10 @@ $(dir_out)/sysmodules: $(dir_sysmod)
 	@cp $(dir_sysmod)/rnx_mitm/rnx_mitm.kip $(dir_out)/ReiNX/sysmodules/
 	@mkdir -p "$(dir_out)/ReiNX/titles/0100000000000034"
 	@mkdir -p "$(dir_out)/ReiNX/titles/0100000000000036"
-	@mv $(dir_sysmod)/fatal/fatal.nsp $(dir_out)/ReiNX/titles/0100000000000034/exefs.nsp
-	@cp -a $(dir_sysmod)/creport/0100000000000036/. $(dir_out)/ReiNX/titles/0100000000000036/
+	@mkdir -p "$(dir_out)/ReiNX/titles/010000000000000D/flags"
+	@cp $(dir_sysmod)/fatal/fatal.nsp $(dir_out)/ReiNX/titles/0100000000000034/exefs.nsp
+	@cp $(dir_sysmod)/dmnt/dmnt.nsp $(dir_out)/ReiNX/titles/010000000000000D/exefs.nsp
+	@cp $(dir_sysmod)/creport/creport.nsp $(dir_out)/ReiNX/titles/0100000000000036/exefs.nsp
 
 
 $(dir_out)/$(name).bin: $(dir_build)/$(name).elf
