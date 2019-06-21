@@ -240,6 +240,18 @@ static kipdiff_t fs_diffs_800_exfat_nogc[3] = {
   { 0, 0, NULL, NULL }
 };
 
+static kipdiff_t fs_diffs_810_nosigchk[3] = {
+  { 0x7630C, 4, "\x51\x44\x00\x94", "\xE0\x03\x1F\x2A" },
+  { 0xF49A4, 4, "\xC0\x03\x00\x36", "\x1F\x20\x03\xD5" },
+  { 0, 0, NULL, NULL },
+};
+
+static kipdiff_t fs_diffs_810_exfat_nosigchk[3] = {
+  { 0x818BC, 4, "\x51\x44\x00\x94", "\xE0\x03\x1F\x2A" },
+  { 0xFFF54, 4, "\xC0\x03\x00\x36", "\x1F\x20\x03\xD5" },
+  { 0, 0, NULL, NULL },
+};
+
 /* patches */
 
 static kippatch_t fs_kip_patches_100[] = {
@@ -350,5 +362,15 @@ static kippatch_t fs_kip_patches_800[] = {
 static kippatch_t fs_kip_patches_800_exfat[] = {
   { "nosigchk", fs_diffs_800_exfat_nosigchk },
   { "nogc", fs_diffs_800_exfat_nogc },
+  { NULL, NULL }
+};
+
+static kippatch_t fs_kip_patches_810[] = {
+  { "nosigchk", fs_diffs_810_nosigchk },
+  { NULL, NULL }
+};
+
+static kippatch_t fs_kip_patches_810_exfat[] = {
+  { "nosigchk", fs_diffs_810_exfat_nosigchk },
   { NULL, NULL }
 };

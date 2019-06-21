@@ -40,4 +40,4 @@
 
 int has_keygen_ran();
 void reloc_patcher(u32 payload_dst, u32 payload_src, u32 payload_size);
-int reboot_to_sept(const u8 *tsec_fw);
+int reboot_to_sept(const u8 *tsec_fw, u32 hosver);

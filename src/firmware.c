@@ -91,7 +91,7 @@ u8 loadFirm() {
     }
     else {
         if(!has_keygen_ran())
-            reboot_to_sept(pkg1ldr + pk11Offs->tsec_off);
+            reboot_to_sept(pkg1ldr + pk11Offs->tsec_off, pk11Offs->hos);
         else
             se_aes_unwrap_key(8, 12, pk21_keyseed);
     }

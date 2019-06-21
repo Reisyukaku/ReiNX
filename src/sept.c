@@ -16,6 +16,7 @@
  */
 
 #include "sept.h"
+#include "hwinit/types.h"
 
 static u8 warmboot_reboot[] = {
     0x14, 0x00, 0x9F, 0xE5, // LDR R0, =0x7000E450
@@ -35,6 +36,7 @@ int has_keygen_ran() {
     if(keys_generated == 1)
         return keys_generated;
     int has_ran = PMC(APBDEV_PMC_SCRATCH49) == 67;
+    PMC(APBDEV_PMC_SCRATCH49) = 0;
     keys_generated = has_ran;
     return has_ran;
 }
@@ -60,12 +62,12 @@ void reloc_patcher(u32 payload_dst, u32 payload_src, u32 payload_size)
     }
 }
 
-int reboot_to_sept(const u8 *tsec_fw)
+int reboot_to_sept(const u8 *tsec_fw, u32 hosver)
 {
     // Copy warmboot reboot code and TSEC fw.
     memcpy((u8 *)(SEPT_PK1T_ADDR - WB_RST_SIZE), (u8 *)warmboot_reboot, sizeof(warmboot_reboot));
-    memcpy((void *)SEPT_PK1T_ADDR, tsec_fw, 0x3000);
-    *(vu32 *)SEPT_TCSZ_ADDR = 0x3000;
+    memcpy((void *)SEPT_PK1T_ADDR, tsec_fw, hosver == HOS_FIRMWARE_VERSION_800 ? 0x3000 : 0x3300);
+    *(vu32 *)SEPT_TCSZ_ADDR = hosver == HOS_FIRMWARE_VERSION_800 ? 0x3000 : 0x3300;
 
     // Copy sept-primary.
     fopen("/sept/sept-primary.bin", "rb");
@@ -73,7 +75,16 @@ int reboot_to_sept(const u8 *tsec_fw)
     fclose();
 
     // Copy sept-secondary.
-    fopen("/sept/sept-secondary.enc", "rb");
+    char *sec_path;
+    switch(hosver) {
+        case HOS_FIRMWARE_VERSION_800:
+            sec_path = "/sept/sept-secondary_00.enc";
+            break;
+        case HOS_FIRMWARE_VERSION_810:
+            sec_path = "/sept/sept-secondary_01.enc";
+            break;
+    }
+    fopen(sec_path, "rb");
     fread((u8 *)SEPT_STG2_ADDR, fsize(), 1);
     fclose();
 

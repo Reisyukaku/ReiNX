@@ -17,7 +17,6 @@
 #include "patches.h"
 
 void patchFS(pkg2_kip1_info_t* ki) {
-
     print("Patching FS\n");
 
     u8 kipHash[0x20];
@@ -215,6 +214,7 @@ void patchSecmon(u32 secmonBase, u32 fw){
         print("Using custom secmon.\n");
     }
 }
+
 
 void patchKernel(pkg2_hdr_t *pkg2){
     //Patch Kernel
