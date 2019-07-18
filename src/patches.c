@@ -33,7 +33,11 @@ void patchFS(pkg2_kip1_info_t* ki) {
 
     u32 pos = 0;
     //Get decomp .text segment
-    u8 *kipDecompText = blz_decompress(moddedKip->data, moddedKip->sections[0].size_comp);
+
+    u8 *kipDecompText = malloc(moddedKip->sections[0].size_decomp);
+    // = blz_decompress(moddedKip->data, moddedKip->sections[0].size_comp);
+    if (!blz_uncompress_srcdest(moddedKip->data, moddedKip->sections[0].size_comp, kipDecompText, moddedKip->sections[0].size_decomp))
+        while(1);
 
     kippatchset_t *pset = kippatch_find_set(kipHash, kip_patches);
     if (!pset) {

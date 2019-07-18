@@ -1,29 +1,36 @@
+/*
+ * Copyright (c) 2018 rajkosto
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #ifndef _BLZ_H_
 #define _BLZ_H_
 
-#include <string.h>
 #include "types.h"
-#include "heap.h"
 
-typedef struct compress_info {
-	u16 windowpos;
-	u16 windowlen;
-	s16 * offtable;
-	s16 * reverse_offtable;
-	s16 * bytetable;
-	s16 * endtable;
-} compress_info;
+typedef struct _blz_footer
+{
+	u32 cmp_and_hdr_size;
+	u32 header_size;
+	u32 addl_size;
+} blz_footer;
 
-typedef struct compfooter {
-	u32 compressed_size;
-	u32 init_index;
-	u32 uncompressed_addl_size;
-} compfooter;
-
-int search(compress_info * info, const u8 * psrc, int * offset, int maxsize);
-void slidebyte(compress_info * info, const u8 * psrc);
-void slide(compress_info * info, const u8 * psrc, int size);
-u8 * blz_decompress(u8 *compressed, u32 size);
-u8 * blz_compress(u8 *decompressed, u32 * isize);
+// Returns pointer to footer in compData if present, additionally copies it to outFooter if not NULL.
+const blz_footer *blz_get_footer(const unsigned char *compData, unsigned int compDataLen, blz_footer *outFooter);
+// Returns 0 on failure.
+int blz_uncompress_inplace(unsigned char *dataBuf, unsigned int compSize, const blz_footer *footer);
+// Returns 0 on failure.
+int blz_uncompress_srcdest(const unsigned char *compData, unsigned int compDataLen, unsigned char *dstData, unsigned int dstSize);
 
 #endif
