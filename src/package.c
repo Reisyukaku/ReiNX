@@ -388,8 +388,7 @@ int kippatch_apply_set(u8 *kipdata, u64 kipdata_len, kippatchset_t *patchset) {
         int r = kippatch_apply(kipdata, kipdata_len, p);
         if (r) return r;
     }
-    if(!strncmp("FS", patchset->kip_name, 2))
-        nca_patch(kipdata, kipdata_len);
+    
     return 0;
 }
 
