@@ -118,11 +118,12 @@ u8 loadFirm() {
 
     // Patch firmware.
     print("%k\nPatching HOS:\n%k", WHITE, DEFAULT_TEXT_COL);
-    patchWarmboot(pk11Offs->warmboot_base);
-    patchSecmon(pk11Offs->secmon_base, pk11Offs->kb);
+    //patchWarmboot(pk11Offs->warmboot_base);
+    //patchSecmon(pk11Offs->secmon_base, pk11Offs->kb);
     patchKernel(dec_pkg2);
     patchKernelExtensions(&kip1_info);
 
+    //memcpy((void *)0xA9800000, pkg2, pkg2_size);
     // Build Package2.
     buildFirmwarePackage(dec_pkg2->data, dec_pkg2->sec_size[PKG2_SEC_KERNEL], &kip1_info, pk11Offs);
 }
@@ -282,12 +283,12 @@ void firmware() {
         }
     }
 
-    //Determine if booting in verbose mode
+   /* //Determine if booting in verbose mode
     if (btn_read() & BTN_VOL_DOWN) {
         print("%kWelcome to ReiNX %d.%d!\n%k", WHITE, VERSION_MAJOR, VERSION_MINOR, DEFAULT_TEXT_COL);
     } else if (drawSplash()) {
         gfx_con.mute = 1;
-    }
+    }*/
 
     //Setup cfw
     loadFirm();

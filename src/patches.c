@@ -227,7 +227,7 @@ void patchKernel(pkg2_hdr_t *pkg2){
         u8 hash[0x20];
         if(pkg2->sec_size[PKG2_SEC_INI1] == 0) {
             se_calc_sha256(hash, (void*)(pkg2->data + 0x1A8), 0x95000 - 0x1A8); //TODO unhardcode
-            *((vu64 *)((uPtr)pkg2->data + 0x168)) = (u64)pkg2->sec_size[PKG2_SEC_KERNEL];
+            //*((vu64 *)((uPtr)pkg2->data + 0x168)) = (u64)pkg2->sec_size[PKG2_SEC_KERNEL];
         }else{
             se_calc_sha256(hash, pkg2->data, pkg2->sec_size[PKG2_SEC_KERNEL]);
         }

@@ -80,7 +80,7 @@ int reboot_to_sept(const u8 *tsec_fw, u32 hosver)
         case HOS_FIRMWARE_VERSION_800:
             sec_path = "/sept/sept-secondary_00.enc";
             break;
-        case HOS_FIRMWARE_VERSION_810:
+        default:
             sec_path = "/sept/sept-secondary_01.enc";
             break;
     }

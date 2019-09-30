@@ -182,6 +182,17 @@ bool hasCustomKern() {
     return customKernel;
 }
 
+u32 pkg2_newkern_ini1_val = 0;
+u32 pkg2_newkern_ini1_start = 0;
+u32 pkg2_newkern_ini1_end = 0;
+void pkg2_get_newkern_info(u8 *kern_data)
+{
+    u32 info_op = *(u32 *)(kern_data + 0x44);
+    pkg2_newkern_ini1_val = ((info_op & 0xFFFF) >> 3) + 0x44; // Parse ADR and PC.
+
+    pkg2_newkern_ini1_start = *(u32 *)(kern_data + pkg2_newkern_ini1_val);
+    pkg2_newkern_ini1_end   = *(u32 *)(kern_data + pkg2_newkern_ini1_val + 0x8);
+}
 
 static u32 buildIni1(pkg2_hdr_t *hdr, void *ini, link_t *kips_info, bool hasCustSecmon)
 {
@@ -238,7 +249,7 @@ void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info, pk11_o
     
     //Newer (8.0+) pk21 embeds ini1 in kernel section, so add ini1 size to kernel size
     if (new_pkg2) {
-        *(u32*)(hdr->data + kernelInfo[8].krnl_offs) = kernel_size; //TODO
+        *(u32*)(hdr->data + pkg2_newkern_ini1_val) = kernel_size;
         kernel_size += iniSize;
     }
     
@@ -246,7 +257,7 @@ void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info, pk11_o
     hdr->sec_off[PKG2_SEC_KERNEL] = hdr->base;
     hdr->sec_size[PKG2_SEC_KERNEL] = kernel_size;
     hdr->sec_off[PKG2_SEC_INI1] = new_pkg2 ? 0 : 0x14080000;
-    hdr->sec_size[PKG2_SEC_INI1] = new_pkg2 ? 0 : iniSize;
+    hdr->sec_size[PKG2_SEC_INI1] = new_pkg2 ? 0 : 0;
 
     // Encrypt header.
     *(u32 *)hdr->ctr = 0x100 + sizeof(pkg2_hdr_t) + kernel_size + hdr->sec_size[PKG2_SEC_INI1];
@@ -263,13 +274,17 @@ size_t calcKipSize(pkg2_kip1_t *kip1) {
     return size;
 }
 
+
+
 void pkg2_parse_kips(link_t *info, pkg2_hdr_t *pkg2) {
     u8 *ptr = pkg2->data + pkg2->sec_size[PKG2_SEC_KERNEL];
-    if (pkg2->sec_size[PKG2_SEC_INI1] == 0)
-        ptr = pkg2->data + *(u32 *)(pkg2->data + 0x168);
+    if (pkg2->sec_size[PKG2_SEC_INI1] == 0) {
+        pkg2_get_newkern_info(pkg2->data);
+
+        ptr = pkg2->data + pkg2_newkern_ini1_start;
+    }
     pkg2_ini1_t *ini1 = (pkg2_ini1_t *)ptr;
     ptr += sizeof(pkg2_ini1_t);
-
     for (u32 i = 0; i < ini1->num_procs; i++) {
         pkg2_kip1_t *kip1 = (pkg2_kip1_t *)ptr;
         pkg2_kip1_info_t *ki = (pkg2_kip1_info_t *)malloc(sizeof(pkg2_kip1_info_t));
@@ -329,6 +344,8 @@ kippatchset_t kip_patches[] = {
     { "FS", "\xdb\xd9\x41\xc0\xc5\x3c\x52\xcc\xf7\x20\x2c\x84\xd8\xe0\xf7\x80", fs_kip_patches_800_exfat },
     { "FS", "\x6b\x09\xb6\x7b\x29\xc0\x20\x24\x6d\xc3\x4f\x5a\x04\xf5\xd3\x09", fs_kip_patches_810 },
     { "FS", "\xb4\xca\xe1\xf2\x49\x65\xd9\x2e\xd2\x4e\xbe\x9e\x97\xf6\x09\xc3", fs_kip_patches_810_exfat },
+    { "FS", "\x46\x87\x40\x76\x1e\x19\x3e\xb7\x58\x79\x46\x88\xf1\xd9\xf7\x62", fs_kip_patches_900 },
+    { "FS", "\x7c\x95\x13\x76\xe5\xc1\x2d\xf8\x5f\xa6\xa9\xf4\x6f\x69\x57\xa4", fs_kip_patches_900 },
     { NULL, NULL, NULL },
 };
 
