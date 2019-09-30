@@ -257,7 +257,7 @@ void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info, pk11_o
     hdr->sec_off[PKG2_SEC_KERNEL] = hdr->base;
     hdr->sec_size[PKG2_SEC_KERNEL] = kernel_size;
     hdr->sec_off[PKG2_SEC_INI1] = new_pkg2 ? 0 : 0x14080000;
-    hdr->sec_size[PKG2_SEC_INI1] = new_pkg2 ? 0 : 0;
+    hdr->sec_size[PKG2_SEC_INI1] = new_pkg2 ? 0 : iniSize;
 
     // Encrypt header.
     *(u32 *)hdr->ctr = 0x100 + sizeof(pkg2_hdr_t) + kernel_size + hdr->sec_size[PKG2_SEC_INI1];
