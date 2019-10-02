@@ -19,7 +19,6 @@
 #include "fs.h"
 #include "package.h"
 #include "patches.h"
-#include "kippatches/fs.inc"
 
 bool customSecmon = false;
 bool customWb = false;
@@ -145,8 +144,8 @@ void pkg1_unpack(pk11_offs *offs, u32 pkg1Off) {
 }
 
 bool hasCustomWb() {
-        if (customWb)
-            return customWb;
+    if (customWb)
+        return customWb;
     if(fopen("/ReiNX/warmboot.bin", "rb") != 0) {
         customWb = true;
         fclose();
@@ -159,8 +158,8 @@ bool hasCustomWb() {
 }
 
 bool hasCustomSecmon() {
-        if (customSecmon)
-            return customSecmon;
+    if (customSecmon)
+        return customSecmon;
     if(fopen("/ReiNX/secmon.bin", "rb") != 0) {
         customSecmon = true;
         fclose();
@@ -174,7 +173,7 @@ bool hasCustomSecmon() {
 
 bool hasCustomKern() {
     if (customKernel)
-            return customKernel;
+        return customKernel;
     if(fopen("/ReiNX/kernel.bin", "rb") != 0) {
         customKernel = true;
         fclose();
@@ -194,7 +193,9 @@ void pkg2_get_newkern_info(u8 *kern_data)
     pkg2_newkern_ini1_end   = *(u32 *)(kern_data + pkg2_newkern_ini1_val + 0x8);
 }
 
-static u32 buildIni1(pkg2_hdr_t *hdr, void *ini, link_t *kips_info, bool hasCustSecmon)
+u32 GetNewKernIniStart() { return pkg2_newkern_ini1_start; }
+
+static u32 buildIni1(pkg2_hdr_t *hdr, void *ini, link_t *kips_info)
 {
     u32 ini1_size = sizeof(pkg2_ini1_t);
     pkg2_ini1_t *ini1 = (pkg2_ini1_t *)ini;
@@ -211,15 +212,11 @@ static u32 buildIni1(pkg2_hdr_t *hdr, void *ini, link_t *kips_info, bool hasCust
     }
     ini1->size = ini1_size;
     
-    if (!hasCustSecmon) 
-        se_aes_crypt_ctr(8, ini1, ini1_size, ini1, ini1_size, &hdr->sec_ctr[PKG2_SEC_INI1 * 0x10]);
-    
     return ini1_size;
 }
 
 void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info, pk11_offs *pk11Offs) {
     u8 *pdst = (u8 *)0xA9800000;
-    bool hasCustSecmon = hasCustomSecmon();
     bool new_pkg2 = pk11Offs->hos >= HOS_FIRMWARE_VERSION_800;
 
     //Signature.
@@ -239,13 +236,10 @@ void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info, pk11_o
     memcpy(hdr->data, extKern == NULL ? kernel : extKern, extKern == NULL ? kernel_size : extSize);
     print("Kernel size: %X\n", kernel_size);
     
-    //Encrpyt kern if no exo
-    if(!hasCustSecmon)
-        se_aes_crypt_ctr(8, hdr->data, kernel_size, hdr->data, kernel_size, &hdr->sec_ctr[PKG2_SEC_KERNEL * 0x10]);
     pdst += kernel_size;
     
     //Build ini1
-    size_t iniSize = buildIni1(hdr, pdst, kips_info, hasCustSecmon); 
+    size_t iniSize = buildIni1(hdr, pdst, kips_info); 
     
     //Newer (8.0+) pk21 embeds ini1 in kernel section, so add ini1 size to kernel size
     if (new_pkg2) {
@@ -261,8 +255,6 @@ void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info, pk11_o
 
     // Encrypt header.
     *(u32 *)hdr->ctr = 0x100 + sizeof(pkg2_hdr_t) + kernel_size + hdr->sec_size[PKG2_SEC_INI1];
-    if (!hasCustSecmon)
-        se_aes_crypt_ctr(8, hdr, sizeof(pkg2_hdr_t), hdr, sizeof(pkg2_hdr_t), hdr);
     memset(hdr->ctr, 0 , 0x10);
     *(u32 *)hdr->ctr = 0x100 + sizeof(pkg2_hdr_t) + kernel_size + hdr->sec_size[PKG2_SEC_INI1];
 }
@@ -274,9 +266,8 @@ size_t calcKipSize(pkg2_kip1_t *kip1) {
     return size;
 }
 
-
-
 void pkg2_parse_kips(link_t *info, pkg2_hdr_t *pkg2) {
+    print("%kParsing KIPS%k\n", WHITE, DEFAULT_TEXT_COL);
     u8 *ptr = pkg2->data + pkg2->sec_size[PKG2_SEC_KERNEL];
     if (pkg2->sec_size[PKG2_SEC_INI1] == 0) {
         pkg2_get_newkern_info(pkg2->data);
@@ -285,6 +276,11 @@ void pkg2_parse_kips(link_t *info, pkg2_hdr_t *pkg2) {
     }
     pkg2_ini1_t *ini1 = (pkg2_ini1_t *)ptr;
     ptr += sizeof(pkg2_ini1_t);
+    if(ini1->magic != 0x31494E49) {
+        error("Invalid INI1 magic!\n");
+        return;
+    }
+    print("INI1 procs: %d", ini1->num_procs);
     for (u32 i = 0; i < ini1->num_procs; i++) {
         pkg2_kip1_t *kip1 = (pkg2_kip1_t *)ptr;
         pkg2_kip1_info_t *ki = (pkg2_kip1_info_t *)malloc(sizeof(pkg2_kip1_info_t));
@@ -313,42 +309,6 @@ void loadKip(link_t *info, char *path) {
     list_append(info, &ki->link);
 }
 
-// TODO: get full hashes somewhere and not just the first 16 bytes
-// every second one is the exfat version
-kippatchset_t kip_patches[] = {
-    { "FS", "\xde\x9f\xdd\xa4\x08\x5d\xd5\xfe\x68\xdc\xb2\x0b\x41\x09\x5b\xb4", fs_kip_patches_100 },
-    { "FS", "\xfc\x3e\x80\x99\x1d\xca\x17\x96\x4a\x12\x1f\x04\xb6\x1b\x17\x5e", fs_kip_patches_100 },
-    { "FS", "\xcd\x7b\xbe\x18\xd6\x13\x0b\x28\xf6\x2f\x19\xfa\x79\x45\x53\x5b", fs_kip_patches_200 },
-    { "FS", "\xe7\x66\x92\xdf\xaa\x04\x20\xe9\xfd\xd6\x8e\x43\x63\x16\x18\x18", fs_kip_patches_200 },
-    { "FS", "\x0d\x70\x05\x62\x7b\x07\x76\x7c\x0b\x96\x3f\x9a\xff\xdd\xe5\x66", fs_kip_patches_210 },
-    { "FS", "\xdb\xd8\x5f\xca\xcc\x19\x3d\xa8\x30\x51\xc6\x64\xe6\x45\x2d\x32", fs_kip_patches_210 },
-    { "FS", "\xa8\x6d\xa5\xe8\x7e\xf1\x09\x7b\x23\xda\xb5\xb4\xdb\xba\xef\xe7", fs_kip_patches_300 },
-    { "FS", "\x98\x1c\x57\xe7\xf0\x2f\x70\xf7\xbc\xde\x75\x31\x81\xd9\x01\xa6", fs_kip_patches_300 },
-    { "FS", "\x57\x39\x7c\x06\x3f\x10\xb6\x31\x3f\x4d\x83\x76\x53\xcc\xc3\x71", fs_kip_patches_301 },
-    { "FS", "\x07\x30\x99\xd7\xc6\xad\x7d\x89\x83\xbc\x7a\xdd\x93\x2b\xe3\xd1", fs_kip_patches_301 },
-    { "FS", "\x06\xe9\x07\x19\x59\x5a\x01\x0c\x62\x46\xff\x70\x94\x6f\x10\xfb", fs_kip_patches_401 },
-    { "FS", "\x54\x9b\x0f\x8d\x6f\x72\xc4\xe9\xf3\xfd\x1f\x19\xea\xce\x4a\x5a", fs_kip_patches_401 },
-    { "FS", "\x80\x96\xaf\x7c\x6a\x35\xaa\x82\x71\xf3\x91\x69\x95\x41\x3b\x0b", fs_kip_patches_410 },
-    { "FS", "\x02\xd5\xab\xaa\xfd\x20\xc8\xb0\x63\x3a\xa0\xdb\xae\xe0\x37\x7e", fs_kip_patches_410 },
-    { "FS", "\xa6\xf2\x7a\xd9\xac\x7c\x73\xad\x41\x9b\x63\xb2\x3e\x78\x5a\x0c", fs_kip_patches_500 },
-    { "FS", "\xce\x3e\xcb\xa2\xf2\xf0\x62\xf5\x75\xf8\xf3\x60\x84\x2b\x32\xb4", fs_kip_patches_500 },
-    { "FS", "\x76\xf8\x74\x02\xc9\x38\x7c\x0f\x0a\x2f\xab\x1b\x45\xce\xbb\x93", fs_kip_patches_510 },
-    { "FS", "\x10\xb2\xd8\x16\x05\x48\x85\x99\xdf\x22\x42\xcb\x6b\xac\x2d\xf1", fs_kip_patches_510 },
-    { "FS", "\x1b\x82\xcb\x22\x18\x67\xcb\x52\xc4\x4a\x86\x9e\xa9\x1a\x1a\xdd", fs_kip_patches_600_40 },
-    { "FS", "\x96\x6a\xdd\x3d\x20\xb6\x27\x13\x2c\x5a\x8d\xa4\x9a\xc9\xd8\xdd", fs_kip_patches_600_40_exfat },
-    { "FS", "\x3a\x57\x4d\x43\x61\x86\x19\x1d\x17\x88\xeb\x2c\x0f\x07\x6b\x11", fs_kip_patches_600_50 },
-    { "FS", "\x33\x05\x53\xf6\xb5\xfb\x55\xc4\xc2\xd7\xb7\x36\x24\x02\x76\xb3", fs_kip_patches_600_50_exfat },
-    { "FS", "\x2a\xdb\xe9\x7e\x9b\x5f\x41\x77\x9e\xc9\x5f\xfe\x26\x99\xc9\x33", fs_kip_patches_700 },
-    { "FS", "\x2c\xce\x65\x9c\xec\x53\x6a\x8e\x4d\x91\xf3\xbe\x4b\x74\xbe\xd3", fs_kip_patches_700_exfat },
-    { "FS", "\xb2\xf5\x17\x6b\x35\x48\x36\x4d\x07\x9a\x29\xb1\x41\xa2\x3b\x06", fs_kip_patches_800 },
-    { "FS", "\xdb\xd9\x41\xc0\xc5\x3c\x52\xcc\xf7\x20\x2c\x84\xd8\xe0\xf7\x80", fs_kip_patches_800_exfat },
-    { "FS", "\x6b\x09\xb6\x7b\x29\xc0\x20\x24\x6d\xc3\x4f\x5a\x04\xf5\xd3\x09", fs_kip_patches_810 },
-    { "FS", "\xb4\xca\xe1\xf2\x49\x65\xd9\x2e\xd2\x4e\xbe\x9e\x97\xf6\x09\xc3", fs_kip_patches_810_exfat },
-    { "FS", "\x46\x87\x40\x76\x1e\x19\x3e\xb7\x58\x79\x46\x88\xf1\xd9\xf7\x62", fs_kip_patches_900 },
-    { "FS", "\x7c\x95\x13\x76\xe5\xc1\x2d\xf8\x5f\xa6\xa9\xf4\x6f\x69\x57\xa4", fs_kip_patches_900 },
-    { NULL, NULL, NULL },
-};
-
 int kippatch_apply(u8 *kipdata, u64 kipdata_len, kippatch_t *patch) {
     if (!patch || !patch->diffs) return -1;
 
@@ -374,7 +334,7 @@ int nca_patch(u8 * kipdata, u64 kipdata_len) {
     int max_dist = 0x10;
     for(int i=0; i<max_dist; i++) {
         u32 op = addr[i];
-        if((op & 0xFC000000)==0x94000000) { //is a BL op
+        if((op & 0xFC000000) == 0x94000000) { //is a BL op
             addr[i] = NOP_v8;
             ret=1;
             break;
@@ -411,7 +371,8 @@ int kippatch_apply_set(u8 *kipdata, u64 kipdata_len, kippatchset_t *patchset) {
 
 kippatchset_t *kippatch_find_set(u8 *kiphash, kippatchset_t *patchsets) {
     for (kippatchset_t *ps = patchsets; ps && ps->kip_name; ++ps) {
-        if (!memcmp(kiphash, ps->kip_hash, 0x10)) return ps;
+        if (!memcmp(kiphash, ps->kip_hash, 8)) return ps;
     }
+    error("KIP hash not found in list!\n");
     return NULL;
 }

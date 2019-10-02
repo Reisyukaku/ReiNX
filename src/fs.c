@@ -14,11 +14,6 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <stddef.h>
-#include <string.h>
-#include "hwinit.h"
-#include "hwinit/ff.h"
-#include "error.h"
 #include "fs.h"
 
 sdmmc_t sd_sdmmc;

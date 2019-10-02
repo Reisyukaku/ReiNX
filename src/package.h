@@ -139,7 +139,11 @@ typedef struct {
     u32 GenericOff;
     u8 CodeSndOff;
     u8 CodeRcvOff;
-    u32 freespace;
+    u32 Freespace;
+    u32 *SndPayload;
+    u32 SndPayloadSize;
+    u32 *RcvPayload;
+    u32 RcvPayloadSize;
 } KernelMeta;
 
 u8 *ReadBoot0(sdmmc_storage_t *storage);
@@ -160,3 +164,4 @@ u8 *LoadExtFile(char *path, size_t *size);
 void loadKip(link_t *info, char *path);
 u32 *getSndPayload(u32 id, size_t *size);
 u32 *getRcvPayload(u32 id, size_t *size);
+u32 GetNewKernIniStart();

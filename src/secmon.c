@@ -52,6 +52,7 @@ void config_exosphere(pk11_offs *pkoff) {
     volatile exo_cfg_t *exo_cfg = (exo_cfg_t *)EXO_CFG_ADDR;
 
     exoFwNo = pkoff->hos;
+    print("Exo firm #: %d\n", exoFwNo);
 
     if (pkoff->hos == HOS_FIRMWARE_VERSION_620)
         exoFlags |= EXO_FLAG_620_KGN;

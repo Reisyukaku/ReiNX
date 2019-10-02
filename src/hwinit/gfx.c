@@ -91,8 +91,10 @@ void gfx_putc(gfx_con_t *con, char c)
             u8 v = *cbuf++;
             for (u32 j = 0; j < 8; j++)
             {
-                if (v & 1) gfx_set_pixel(con->gfx_ctxt, con->x + j, con->y + i, con->fgcol);
-                else if (con->fillbg) gfx_set_pixel(con->gfx_ctxt, con->x + j, con->y + i, con->bgcol);
+                if (v & 1) 
+                    gfx_set_pixel(con->gfx_ctxt, con->x + j, con->y + i, con->fgcol);
+                else if (con->fillbg) 
+                    gfx_set_pixel(con->gfx_ctxt, con->x + j, con->y + i, con->bgcol);
                 v >>= 1;
             }
         }
@@ -194,8 +196,9 @@ void gfx_printf(gfx_con_t *con, const char *fmt, ...)
                 default: { gfx_putc(con, '%'); gfx_putc(con, *fmt); break; }
 			}
 		}
-		else
+		else {
 			gfx_putc(con, *fmt);
+        }
 		fmt++;
 	}
 

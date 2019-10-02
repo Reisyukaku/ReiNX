@@ -99,8 +99,8 @@ u8 loadFirm() {
     print("Unpacking pkg1\n");
     pkg1_unpack(pk11Offs, (u32)pkg11);
 
-    if (!hasCustomWb() && !hasCustomSecmon() && pk11Offs->kb >= KB_FIRMWARE_VERSION_700) {
-        error("Missing warmboot.bin or secmon.bin. These are needed to boot on firmware version 7.0 onwards.\n");
+    if (!hasCustomWb() && !hasCustomSecmon()) {
+        error("Missing warmboot.bin or secmon.bin. These are required!\n");
     }
     PMC(APBDEV_PMC_SCRATCH1) = pk11Offs->warmboot_base;
     free(pkg1ldr);
@@ -117,9 +117,6 @@ u8 loadFirm() {
     pkg2_parse_kips(&kip1_info, dec_pkg2);
 
     // Patch firmware.
-    print("%k\nPatching HOS:\n%k", WHITE, DEFAULT_TEXT_COL);
-    patchWarmboot(pk11Offs->warmboot_base);
-    patchSecmon(pk11Offs->secmon_base, pk11Offs->kb);
     patchKernel(dec_pkg2);
     patchKernelExtensions(&kip1_info);
 
@@ -142,8 +139,6 @@ static void SE_lock() {
 }
 
 void launch() {
-    print("%k\nLaunching HOS!\n%k", GREEN, DEFAULT_TEXT_COL);
-
     se_aes_key_clear(0x8);
     se_aes_key_clear(0xB);
 
@@ -201,6 +196,11 @@ void launch() {
         *BOOT_STATE_ADDR = (pk11Offs->kb < KB_FIRMWARE_VERSION_400 ? BOOT_PKG2_LOADED : BOOT_PKG2_LOADED_4X);
         *SECMON_STATE_ADDR = 0;
     }
+    print("%k\nLaunching HOS!\n%k", GREEN, DEFAULT_TEXT_COL);
+    
+    // Wait if in verbose mode
+    if(!gfx_con.mute) btn_wait();
+    
     // Disable display.
     display_end();
 
