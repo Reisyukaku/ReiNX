@@ -239,7 +239,7 @@ void patchKernel(pkg2_hdr_t *pkg2){
             print("Patching kernel %d\n", i);
 
             //Find free space
-            uPtr freeSpace = getFreeSpace((void*)(kern+0x45000), 0x200, 0x20000) + 0x45000;     //Find area to write payload
+            uPtr freeSpace = kernelInfo[i].freespace; //getFreeSpace((void*)(kern+0x45000), 0x200, 0x20000) + 0x45000;     //Find area to write payload
             print("Kernel Freespace: 0x%08X\n", freeSpace);
             
             //ID Send
@@ -329,16 +329,23 @@ u32 *getSndPayload(u32 id, size_t *size) {
             ret = PRC_ID_SND_500;
             break;
         case 6:
+        case 7:
             *size = sizeof(PRC_ID_SND_600);
             ret = PRC_ID_SND_600;
             break;
-        case 7:
+        case 8:
+        case 9:
             *size = sizeof(PRC_ID_SND_700);
             ret = PRC_ID_SND_700;
             break;
-        case 8:
+        case 10:
+        case 11:
             *size = sizeof(PRC_ID_SND_800);
             ret = PRC_ID_SND_800;
+            break;
+        case 12:
+            *size = sizeof(PRC_ID_SND_900);
+            ret = PRC_ID_SND_900;
             break;
     }
     return ret;
@@ -372,16 +379,23 @@ u32 *getRcvPayload(u32 id, size_t *size) {
             ret = PRC_ID_RCV_500;
             break;
         case 6:
+        case 7:
             *size = sizeof(PRC_ID_RCV_600);
             ret = PRC_ID_RCV_600;
             break;
-        case 7:
+        case 8:
+        case 9:
             *size = sizeof(PRC_ID_RCV_700);
             ret = PRC_ID_RCV_700;
             break;
-        case 8:
+        case 10:
+        case 11:
             *size = sizeof(PRC_ID_RCV_800);
             ret = PRC_ID_RCV_800;
+            break;
+        case 12:
+            *size = sizeof(PRC_ID_RCV_900);
+            ret = PRC_ID_RCV_900;
             break;
     }
     return ret;

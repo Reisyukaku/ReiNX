@@ -139,7 +139,7 @@ typedef struct {
     u32 GenericOff;
     u8 CodeSndOff;
     u8 CodeRcvOff;
-    u32 krnl_offs;
+    u32 freespace;
 } KernelMeta;
 
 u8 *ReadBoot0(sdmmc_storage_t *storage);
