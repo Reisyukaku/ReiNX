@@ -15,18 +15,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <string.h>
-#include <stddef.h>
-#include "hwinit.h"
-#include "fs.h"
-#include "package.h"
-#include "error.h"
-#include "bootloader.h"
-#include "bootrom.h"
 #include "firmware.h"
-#include "patches.h"
-#include "secmon.h"
-#include "sept.h"
+
 
 static pk11_offs *pk11Offs = NULL;
 char id[15] = {0};
@@ -98,10 +88,7 @@ u8 loadFirm() {
 
     print("Unpacking pkg1\n");
     pkg1_unpack(pk11Offs, (u32)pkg11);
-
-    if (!hasCustomWb() && !hasCustomSecmon()) {
-        error("Missing warmboot.bin or secmon.bin. These are required!\n");
-    }
+    
     PMC(APBDEV_PMC_SCRATCH1) = pk11Offs->warmboot_base;
     free(pkg1ldr);
 
@@ -161,8 +148,7 @@ void launch() {
             se_key_acc_ctrl(15, 0xFF);
     }
 
-    if (hasCustomSecmon())
-        config_exosphere((void *)pk11Offs);
+    config_exosphere((void *)pk11Offs);
 
     //We're done with SD now
     sdUnmount();
@@ -232,13 +218,8 @@ void firmware() {
     gfx_con_setcol(&gfx_con, DEFAULT_TEXT_COL, 0, 0);
 
     //Mount SD
-    if (!sdMount()) {
-        error("Failed to init SD card!\n");
-        print("Press POWER to power off, or any other key to continue without SD.\n");
-        if (btn_wait() & BTN_POWER)
-            i2c_send_byte(I2C_5, 0x3C, MAX77620_REG_ONOFFCNFG1, MAX77620_ONOFFCNFG1_PWR_OFF);
-        btn_wait();
-    }
+    if (!sdMount())
+        error("Failed to init SD card!\nPress POWER to power off, or any other key to continue without SD.\n");
 
     //Chainload ReiNX if applicable
     if(PMC(APBDEV_PMC_SCRATCH49) != 69 && PMC(APBDEV_PMC_SCRATCH49) != 67 && fopen("/ReiNX.bin", "rb")) {
@@ -278,7 +259,6 @@ void firmware() {
             ((void (*)())PAYLOAD_ADDR)();
         } else {
             error("Failed to launch recovery menu!\nIs it missing from /ReiNX folder?\n");
-            btn_wait();
         }
     }
 
@@ -287,6 +267,11 @@ void firmware() {
         print("%kWelcome to ReiNX %d.%d!\n%k", WHITE, VERSION_MAJOR, VERSION_MINOR, DEFAULT_TEXT_COL);
     } else if (drawSplash()) {
         gfx_con.mute = 1;
+    }
+    
+    //Make sure we have the needed files
+    if (!hasCustomWb() && !hasCustomSecmon()) {
+        error("Missing warmboot.bin or secmon.bin. These are required!\n");
     }
 
     //Setup cfw

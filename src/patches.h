@@ -271,7 +271,7 @@ static const KernelMeta kernelInfo[] = {
 
 // TODO: get full hashes somewhere and not just the first 16 bytes
 // every second one is the exfat version
-kippatchset_t kip_patches[] = {
+static kippatchset_t kip_patches[] = {
     { "FS", "\xde\x9f\xdd\xa4\x08\x5d\xd5\xfe", fs_kip_patches_100 },
     { "FS", "\xfc\x3e\x80\x99\x1d\xca\x17\x96", fs_kip_patches_100 },
     { "FS", "\xcd\x7b\xbe\x18\xd6\x13\x0b\x28", fs_kip_patches_200 },
@@ -304,8 +304,6 @@ kippatchset_t kip_patches[] = {
     { "FS", "\x7c\x95\x13\x76\xe5\xc1\x2d\xf8", fs_kip_patches_900 },
     { NULL, NULL, NULL },
 };
-
-extern kippatchset_t kip_patches[];
 
 void patchFS(pkg2_kip1_info_t* ki);
 void patchKernel(pkg2_hdr_t *pkg2);

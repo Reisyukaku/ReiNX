@@ -72,7 +72,7 @@ void patchKernel(pkg2_hdr_t *pkg2){
         if(pkg2->sec_size[PKG2_SEC_INI1] == 0) {
             se_calc_sha256(hash, (void*)(pkg2->data + 0x800), GetNewKernIniStart() - 0x800); //TODO unhardcode
             //*((vu64 *)((uPtr)pkg2->data + 0x168)) = (u64)pkg2->sec_size[PKG2_SEC_KERNEL];
-            printHex(hash, hash, 0x20);
+            printHex((void*)hash, 0x20);
         }else{
             se_calc_sha256(hash, pkg2->data, pkg2->sec_size[PKG2_SEC_KERNEL]);
         }
@@ -125,7 +125,7 @@ void patchKernel(pkg2_hdr_t *pkg2){
         }
         if(!foundKern) {
             error("\nKernel hash doesnt match list!\n");
-            printHex(kernelInfo[i].Hash, kernelInfo[i].Hash, 0x20);
+            printHex((void*)kernelInfo[i].Hash, 0x20);
         }
     }else{
         print("Using custom kernel.\n");

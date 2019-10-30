@@ -34,4 +34,6 @@ void error(char *errStr) {
     gfx_con_setcol(&gfx_con, RED, 0, 0);
     print("Error: %s", errStr);
     gfx_con_setcol(&gfx_con, DEFAULT_TEXT_COL, 0, 0);
+    if (btn_wait() & BTN_POWER)
+        i2c_send_byte(I2C_5, 0x3C, MAX77620_REG_ONOFFCNFG1, MAX77620_ONOFFCNFG1_PWR_OFF);
 }

@@ -162,7 +162,7 @@ void gfx_con_setpos(gfx_con_t *con, u32 x, u32 y);
 void gfx_putc(gfx_con_t *con, char c);
 void gfx_puts(gfx_con_t *con, const char *s);
 void gfx_printf(gfx_con_t *con, const char *fmt, ...);
-void gfx_hexdump(gfx_con_t *con, u32 base, const u8 *buf, u32 len);
+void gfx_hexdump(gfx_con_t *con, const u8 *buf, u32 len);
 
 void gfx_set_pixel(gfx_ctxt_t *ctxt, u32 x, u32 y, u32 color);
 

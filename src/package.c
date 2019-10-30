@@ -14,11 +14,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "hwinit.h"
-#include "error.h"
-#include "fs.h"
 #include "package.h"
-#include "patches.h"
 
 bool customSecmon = false;
 bool customWb = false;
@@ -95,7 +91,6 @@ pkg2_hdr_t *unpackFirmwarePackage(u8 *data) {
 }
 
 u8 *LoadExtFile(char *path, size_t *size) {
-    print("Reading external file %s\n", path);
     u8 *buf = NULL;
     if(fopen(path, "rb") != 0) {
         size_t fileSize = fsize();
@@ -105,6 +100,7 @@ u8 *LoadExtFile(char *path, size_t *size) {
             fclose();
             return NULL;
         }
+        print("%kReading external file %s%k\n", YELLOW, path, DEFAULT_TEXT_COL);
         buf = malloc(fileSize);
         fread(buf, fileSize, 1);
         fclose();
@@ -280,7 +276,7 @@ void pkg2_parse_kips(link_t *info, pkg2_hdr_t *pkg2) {
         error("Invalid INI1 magic!\n");
         return;
     }
-    print("INI1 procs: %d", ini1->num_procs);
+    print("INI1 procs: %d\n", ini1->num_procs);
     for (u32 i = 0; i < ini1->num_procs; i++) {
         pkg2_kip1_t *kip1 = (pkg2_kip1_t *)ptr;
         pkg2_kip1_info_t *ki = (pkg2_kip1_info_t *)malloc(sizeof(pkg2_kip1_info_t));

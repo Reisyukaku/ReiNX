@@ -206,7 +206,7 @@ void gfx_printf(gfx_con_t *con, const char *fmt, ...)
 	va_end(ap);
 }
 
-void gfx_hexdump(gfx_con_t *con, u32 base, const u8 *buf, u32 len)
+void gfx_hexdump(gfx_con_t *con, const u8 *buf, u32 len)
 {
 	if (con->mute)
 		return;
@@ -228,7 +228,7 @@ void gfx_hexdump(gfx_con_t *con, u32 base, const u8 *buf, u32 len)
 				}
 				gfx_putc(con, '\n');
 			}
-			gfx_printf(con, "%08x: ", base + i);
+			gfx_printf(con, "%08x: ", &buf + i);
 		}
 		gfx_printf(con, "%02x ", buf[i]);
 		if (i == len - 1)

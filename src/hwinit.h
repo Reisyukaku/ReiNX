@@ -45,5 +45,6 @@
 #include "hwinit/mmc.h"
 #include "hwinit/gfx.h"
 #include "hwinit/smmu.h"
+#include "hwinit/types.h"
 
 #define DEFAULT_TEXT_COL ORANGE

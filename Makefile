@@ -32,7 +32,7 @@ define bin2o
 endef
 
 .PHONY: all
-all: sysmod reinx
+all: reinx sysmod
 
 .PHONY: sysmod
 sysmod: $(dir_out)/sysmodules
@@ -56,12 +56,16 @@ $(dir_out)/sysmodules: $(dir_sysmod)
 	@cp $(dir_sysmod)/sm/sm.kip $(dir_out)/ReiNX/sysmodules/
 	@cp $(dir_sysmod)/pm/pm.kip $(dir_out)/ReiNX/sysmodules/
 	@cp $(dir_sysmod)/rnx_mitm/rnx_mitm.kip $(dir_out)/ReiNX/sysmodules/
+	@cp $(dir_sysmod)/spl/spl.kip $(dir_out)/ReiNX/sysmodules/
+	@cp $(dir_sysmod)/boot/boot.kip $(dir_out)/ReiNX/sysmodules/
 	@mkdir -p "$(dir_out)/ReiNX/titles/0100000000000034"
 	@mkdir -p "$(dir_out)/ReiNX/titles/0100000000000036"
+	@mkdir -p "$(dir_out)/ReiNX/titles/0100000000000037"
 	@mkdir -p "$(dir_out)/ReiNX/titles/010000000000000D/flags"
 	@cp $(dir_sysmod)/fatal/fatal.nsp $(dir_out)/ReiNX/titles/0100000000000034/exefs.nsp
 	@cp $(dir_sysmod)/dmnt/dmnt.nsp $(dir_out)/ReiNX/titles/010000000000000D/exefs.nsp
 	@cp $(dir_sysmod)/creport/creport.nsp $(dir_out)/ReiNX/titles/0100000000000036/exefs.nsp
+	@cp $(dir_sysmod)/ro/ro.nsp $(dir_out)/ReiNX/titles/0100000000000037/exefs.nsp
 
 
 $(dir_out)/$(name).bin: $(dir_build)/$(name).elf
