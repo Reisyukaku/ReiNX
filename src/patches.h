@@ -22,6 +22,8 @@
 #include "error.h"
 #include "kippatches/fs.inc"
 
+#define PKG2_NEWKERN_START 0x800
+
 //FS_MITM
 static u32 PRC_ID_SND_100[] =
 {

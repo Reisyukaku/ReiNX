@@ -69,8 +69,8 @@ void patchKernel(pkg2_hdr_t *pkg2){
     if(!hasCustomKern()) {
         print("%kPatching Kernel...%k\n", WHITE, DEFAULT_TEXT_COL);
         u8 hash[0x20];
-        if(pkg2->sec_size[PKG2_SEC_INI1] == 0) {
-            se_calc_sha256(hash, (void*)(pkg2->data + 0x800), GetNewKernIniStart() - 0x800); //TODO unhardcode
+        if(!pkg2->sec_size[PKG2_SEC_INI1]) {
+            se_calc_sha256(hash, (void*)(pkg2->data + PKG2_NEWKERN_START), GetNewKernIniStart() - PKG2_NEWKERN_START); //TODO unhardcode
             //*((vu64 *)((uPtr)pkg2->data + 0x168)) = (u64)pkg2->sec_size[PKG2_SEC_KERNEL];
             printHex((void*)hash, 0x20);
         }else{

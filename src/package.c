@@ -265,7 +265,7 @@ size_t calcKipSize(pkg2_kip1_t *kip1) {
 void pkg2_parse_kips(link_t *info, pkg2_hdr_t *pkg2) {
     print("%kParsing KIPS%k\n", WHITE, DEFAULT_TEXT_COL);
     u8 *ptr = pkg2->data + pkg2->sec_size[PKG2_SEC_KERNEL];
-    if (pkg2->sec_size[PKG2_SEC_INI1] == 0) {
+    if (!pkg2->sec_size[PKG2_SEC_INI1]) {
         pkg2_get_newkern_info(pkg2->data);
 
         ptr = pkg2->data + pkg2_newkern_ini1_start;
