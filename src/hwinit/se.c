@@ -1,22 +1,22 @@
 /*
-* Copyright (c) 2018 naehrwert
-* Copyright (c) 2018 CTCaer
-* Copyright (c) 2018 Atmosphère-NX
-*
-* This program is free software; you can redistribute it and/or modify it
-* under the terms and conditions of the GNU General Public License,
-* version 2, as published by the Free Software Foundation.
-*
-* This program is distributed in the hope it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-* more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ * Copyright (c) 2018 naehrwert
+ * Copyright (c) 2018 CTCaer
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #include <string.h>
+
 #include "se.h"
 #include "heap.h"
 #include "t210.h"
@@ -35,7 +35,7 @@ static void _gf256_mul_x(void *block)
 	u8 *pdata = (u8 *)block;
 	u32 carry = 0;
 
-	for (u32 i = 0xF; i >= 0; i--)
+	for (int i = 0xF; i >= 0; i--)
 	{
 		u8 b = pdata[i];
 		pdata[i] = (b << 1) | carry;
@@ -64,8 +64,8 @@ static int _se_wait()
 	while (!(SE(SE_INT_STATUS_REG_OFFSET) & SE_INT_OP_DONE(INT_SET)))
 		;
 	if (SE(SE_INT_STATUS_REG_OFFSET) & SE_INT_ERROR(INT_SET) ||
-		SE(SE_STATUS_0) & 3 ||
-		SE(SE_ERR_STATUS_0) != 0)
+		SE(SE_STATUS_0) & SE_STATUS_0_STATE_WAIT_IN ||
+		SE(SE_ERR_STATUS_0) != SE_ERR_STATUS_0_SE_NS_ACCESS_CLEAR)
 		return 0;
 	return 1;
 }
@@ -90,8 +90,8 @@ static int _se_execute(u32 op, void *dst, u32 dst_size, const void *src, u32 src
 
 	SE(SE_ERR_STATUS_0) = SE(SE_ERR_STATUS_0);
 	SE(SE_INT_STATUS_REG_OFFSET) = SE(SE_INT_STATUS_REG_OFFSET);
-	SE(SE_OPERATION_REG_OFFSET) = SE_OPERATION(op);
 
+	SE(SE_OPERATION_REG_OFFSET) = SE_OPERATION(op);
 	int res = _se_wait();
 
 	if (src)
@@ -104,6 +104,9 @@ static int _se_execute(u32 op, void *dst, u32 dst_size, const void *src, u32 src
 
 static int _se_execute_one_block(u32 op, void *dst, u32 dst_size, const void *src, u32 src_size)
 {
+	if (!src || !dst)
+		return 0;
+
 	u8 *block = (u8 *)malloc(0x10);
 	memset(block, 0, 0x10);
 
@@ -112,7 +115,7 @@ static int _se_execute_one_block(u32 op, void *dst, u32 dst_size, const void *sr
 	memcpy(block, src, src_size);
 	int res = _se_execute(op, block, 0x10, block, 0x10);
 	memcpy(dst, block, dst_size);
-	
+
 	free(block);
 	return res;
 }
@@ -126,17 +129,19 @@ static void _se_aes_ctr_set(void *ctr)
 
 void se_rsa_acc_ctrl(u32 rs, u32 flags)
 {
-	if (flags & 0x7F)
-		SE(SE_RSA_KEYTABLE_ACCESS_REG_OFFSET + 4 * rs) = (((flags >> 4) & 4) | (flags & 3)) ^ 7;
-	if (flags & 0x80)
+	if (flags & SE_RSA_KEY_TBL_DIS_KEY_ALL_FLAG)
+		SE(SE_RSA_KEYTABLE_ACCESS_REG_OFFSET + 4 * rs) =
+			((flags >> SE_RSA_KEY_TBL_DIS_KEYUSE_FLAG_SHIFT) & SE_RSA_KEY_TBL_DIS_KEYUSE_FLAG) |
+			((flags & SE_RSA_KEY_TBL_DIS_KEY_READ_UPDATE_FLAG) ^ SE_RSA_KEY_TBL_DIS_KEY_ALL_COMMON_FLAG);
+	if (flags & SE_RSA_KEY_TBL_DIS_KEY_LOCK_FLAG)
 		SE(SE_RSA_KEYTABLE_ACCESS_LOCK_OFFSET) &= ~(1 << rs);
 }
 
 void se_key_acc_ctrl(u32 ks, u32 flags)
 {
-	if (flags & 0x7F)
+	if (flags & SE_KEY_TBL_DIS_KEY_ACCESS_FLAG)
 		SE(SE_KEY_TABLE_ACCESS_REG_OFFSET + 4 * ks) = ~flags;
-	if (flags & 0x80)
+	if (flags & SE_KEY_TBL_DIS_KEY_LOCK_FLAG)
 		SE(SE_KEY_TABLE_ACCESS_LOCK_OFFSET) &= ~(1 << ks);
 }
 
@@ -163,12 +168,13 @@ int se_aes_unwrap_key(u32 ks_dst, u32 ks_src, const void *input)
 {
 	SE(SE_CONFIG_REG_OFFSET) = SE_CONFIG_DEC_ALG(ALG_AES_DEC) | SE_CONFIG_DST(DST_KEYTAB);
 	SE(SE_CRYPTO_REG_OFFSET) = SE_CRYPTO_KEY_INDEX(ks_src) | SE_CRYPTO_CORE_SEL(CORE_DECRYPT);
-	SE(0x318) = 0;
+	SE(SE_BLOCK_COUNT_REG_OFFSET) = 0;
 	SE(SE_CRYPTO_KEYTABLE_DST_REG_OFFSET) = SE_CRYPTO_KEYTABLE_DST_KEY_INDEX(ks_dst);
+
 	return _se_execute(OP_START, NULL, 0, input, 0x10);
 }
 
-int se_aes_crypt_block_ecb(u32 ks, u32 enc, void *dst, const void *src)
+int se_aes_crypt_ecb(u32 ks, u32 enc, void *dst, u32 dst_size, const void *src, u32 src_size)
 {
 	if (enc)
 	{
@@ -180,8 +186,13 @@ int se_aes_crypt_block_ecb(u32 ks, u32 enc, void *dst, const void *src)
 		SE(SE_CONFIG_REG_OFFSET) = SE_CONFIG_DEC_ALG(ALG_AES_DEC) | SE_CONFIG_DST(DST_MEMORY);
 		SE(SE_CRYPTO_REG_OFFSET) = SE_CRYPTO_KEY_INDEX(ks) | SE_CRYPTO_CORE_SEL(CORE_DECRYPT);
 	}
-	SE(SE_BLOCK_COUNT_REG_OFFSET) = 0;
-	return _se_execute(OP_START, dst, 0x10, src, 0x10);
+	SE(SE_BLOCK_COUNT_REG_OFFSET) = (src_size >> 4) - 1;
+	return _se_execute(OP_START, dst, dst_size, src, src_size);
+}
+
+int se_aes_crypt_block_ecb(u32 ks, u32 enc, void *dst, const void *src)
+{
+	return se_aes_crypt_ecb(ks, enc, dst, 0x10, src, 0x10);
 }
 
 int se_aes_crypt_ctr(u32 ks, void *dst, u32 dst_size, const void *src, u32 src_size, void *ctr)
@@ -265,15 +276,15 @@ int se_calc_sha256(void *dst, const void *src, u32 src_size)
 	int res;
 	// Setup config for SHA256, size = BITS(src_size).
 	SE(SE_CONFIG_REG_OFFSET) = SE_CONFIG_ENC_MODE(MODE_SHA256) | SE_CONFIG_ENC_ALG(ALG_SHA) | SE_CONFIG_DST(DST_HASHREG);
-	SE(SE_SHA_CONFIG_REG_OFFSET) = 1;
-	SE(SE_SHA_MSG_LENGTH_REG_OFFSET) = (u32)(src_size << 3);
-	SE(0x208) = 0;
-	SE(0x20C) = 0;
-	SE(0x210) = 0;
-	SE(SE_SHA_MSG_LEFT_REG_OFFSET) = (u32)(src_size << 3);
-	SE(0x218) = 0;
-   	SE(0x21C) = 0;
-	SE(0x220) = 0;
+	SE(SE_SHA_CONFIG_REG_OFFSET) = SHA_INIT_HASH;
+	SE(SE_SHA_MSG_LENGTH_0_REG_OFFSET) = (u32)(src_size << 3);
+	SE(SE_SHA_MSG_LENGTH_1_REG_OFFSET) = 0;
+	SE(SE_SHA_MSG_LENGTH_2_REG_OFFSET) = 0;
+	SE(SE_SHA_MSG_LENGTH_3_REG_OFFSET) = 0;
+	SE(SE_SHA_MSG_LEFT_0_REG_OFFSET) = (u32)(src_size << 3);
+	SE(SE_SHA_MSG_LEFT_1_REG_OFFSET) = 0;
+	SE(SE_SHA_MSG_LEFT_2_REG_OFFSET) = 0;
+	SE(SE_SHA_MSG_LEFT_3_REG_OFFSET) = 0;
 
 	// Trigger the operation.
 	res = _se_execute(OP_START, NULL, 0, src, src_size);

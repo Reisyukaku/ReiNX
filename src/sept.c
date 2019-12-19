@@ -35,8 +35,8 @@ int keys_generated = 0;
 int has_keygen_ran() {
     if(keys_generated == 1)
         return keys_generated;
-    int has_ran = PMC(APBDEV_PMC_SCRATCH49) == 67;
-    PMC(APBDEV_PMC_SCRATCH49) = 0;
+    int has_ran = EMC(EMC_SCRATCH0) == 67;
+    EMC(EMC_SCRATCH0) = 0;
     keys_generated = has_ran;
     return has_ran;
 }
@@ -104,7 +104,7 @@ int reboot_to_sept(const u8 *tsec_fw, u32 hosver)
     PMC(APBDEV_PMC_SCRATCH40) = 0x6000F208;
 
     display_end();
-
+    
     (*sept)();
 
     return 1;

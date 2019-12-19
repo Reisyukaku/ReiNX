@@ -23,6 +23,12 @@
 .extern heap_init
 .type heap_init, %function
 
+.extern bootrom
+.type bootrom, %function
+
+.extern bootloader
+.type bootloader, %function
+
 .extern firmware
 .type firmware, %function
 
@@ -67,6 +73,7 @@ _real_start:
     LDR R2, =__bss_end
     SUB R2, R2, R0
     BL memset
+    LDR SP, =0x90010000
     LDR R0, =__heap_start /* initting heap to this address */
     BL heap_init
     BL firmware

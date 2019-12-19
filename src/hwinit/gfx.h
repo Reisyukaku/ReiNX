@@ -21,11 +21,11 @@
 
 #include "types.h"
 
-#define RED 0xFF0000FF
+#define RED 0xFFFF0000
 #define GREEN 0xFF00FF00
-#define BLUE 0xFFFF0000
-#define YELLOW 0xFF00FFFF
-#define ORANGE 0xFF3891FF
+#define BLUE 0xFF0000FF
+#define YELLOW 0xFFFFFF00
+#define ORANGE 0xFFFF9138
 #define WHITE 0xFFFFFFFF
 #define BLACK 0xFF000000
 

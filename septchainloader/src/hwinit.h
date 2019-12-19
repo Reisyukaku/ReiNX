@@ -18,6 +18,7 @@
 
 #include <string.h>
 #include "hwinit/btn.h"
+#include "hwinit/blz.h"
 #include "hwinit/clock.h"
 #include "hwinit/cluster.h"
 #include "hwinit/uart.h"
@@ -32,6 +33,7 @@
 #include "hwinit/util.h"
 #include "hwinit/tsec.h"
 #include "hwinit/kfuse.h"
+#include "hwinit/fuse.h"
 #include "hwinit/max77620.h"
 #include "hwinit/max7762x.h"
 #include "hwinit/gpio.h"
@@ -44,5 +46,6 @@
 #include "hwinit/mmc.h"
 #include "hwinit/gfx.h"
 #include "hwinit/smmu.h"
+#include "hwinit/types.h"
 
 #define DEFAULT_TEXT_COL ORANGE

@@ -1,22 +1,37 @@
 /*
-* Copyright (c) 2018 naehrwert
-*
-* This program is free software; you can redistribute it and/or modify it
-* under the terms and conditions of the GNU General Public License,
-* version 2, as published by the Free Software Foundation.
-*
-* This program is distributed in the hope it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-* more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ * Copyright (c) 2018 naehrwert
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #include "kfuse.h"
 #include "clock.h"
 #include "t210.h"
+
+#pragma GCC push_options
+#pragma GCC optimize ("Os")
+
+int kfuse_wait_ready()
+{
+	// Wait for KFUSE to finish init and verification of data.
+	while (!(KFUSE(KFUSE_STATE) & KFUSE_STATE_DONE))
+		;
+
+	if (!(KFUSE(KFUSE_STATE) & KFUSE_STATE_CRCPASS))
+		return 0;
+
+	return 1;
+}
 
 int kfuse_read(u32 *buf)
 {
@@ -24,10 +39,7 @@ int kfuse_read(u32 *buf)
 
 	clock_enable_kfuse();
 
-	while (!(KFUSE(KFUSE_STATE) & KFUSE_STATE_DONE))
-		;
-
-	if (!(KFUSE(KFUSE_STATE) & KFUSE_STATE_CRCPASS))
+	if (!kfuse_wait_ready())
 		goto out;
 
 	KFUSE(KFUSE_KEYADDR) = KFUSE_KEYADDR_AUTOINC;
@@ -40,3 +52,5 @@ out:;
 	clock_disable_kfuse();
 	return res;
 }
+
+#pragma GCC pop_options

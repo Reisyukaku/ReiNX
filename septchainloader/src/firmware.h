@@ -15,16 +15,6 @@
 */
 #pragma once
 
-#include "hwinit/types.h"
-
-#define UWU0_MAGIC (u32)0x30557755
-#define METADATA_OFFSSET 0xB0 
-typedef struct {
-	u32 magic;
-	u8 major;
-	u8 minor;
-} metadata_t;
-
 //Boot status
 #define BOOT_STATE_ADDR (vu32 *)0x40002EF8
 #define SECMON_STATE_ADDR (vu32 *)0x40002EFC

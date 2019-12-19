@@ -44,7 +44,7 @@ typedef struct _cfg_op_t
 u32 get_tmr_s();
 u32 get_tmr_ms();
 u32 get_tmr_us();
-void musleep(u32 milliseconds);
+void msleep(u32 milliseconds);
 void usleep(u32 microseconds);
 void exec_cfg(u32 *base, const cfg_op_t *ops, u32 num_ops);
 uPtr memsearch(void *startPos, size_t searchSize, void *pattern, size_t patternSize);

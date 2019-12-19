@@ -15,6 +15,10 @@
 */
 
 #pragma once
+#include <stddef.h>
+#include <string.h>
+#include "hwinit.h"
+#include "hwinit/ff.h"
 
 u32 sdMount();
 void sdUnmount();

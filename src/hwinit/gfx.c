@@ -71,7 +71,7 @@ void gfx_con_setpos(gfx_con_t *con, u32 x, u32 y)
 */
 void gfx_set_pixel(gfx_ctxt_t *ctxt, u32 x, u32 y, u32 color)
 {
-    ctxt->fb[y + (ctxt->width - x) * ctxt->stride] = color;
+    ctxt->fb[y + x * ctxt->stride] = color;
 }
 
 void gfx_clear_color(gfx_ctxt_t *ctxt, u32 color)

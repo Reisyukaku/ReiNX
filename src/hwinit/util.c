@@ -36,7 +36,7 @@ u32 get_tmr_us()
 	return TMR(0x10); //TIMERUS_CNTR_1US
 }
 
-void musleep(u32 milliseconds)
+void msleep(u32 milliseconds)
 {
 	u32 start = RTC(0x10) | (RTC(0xC)<< 10);
 	while (((RTC(0x10) | (RTC(0xC)<< 10)) - start) <= milliseconds)

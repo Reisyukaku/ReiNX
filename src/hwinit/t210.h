@@ -20,6 +20,7 @@
 #include "types.h"
 
 #define BOOTROM_BASE 0x100000
+#define IRAM_BASE 0x40000000
 #define HOST1X_BASE 0x50000000
 #define BPMP_CACHE_BASE 0x50040000
 #define DISPLAY_A_BASE 0x54200000
@@ -99,15 +100,31 @@
 #define I2S(off) _REG(I2S_BASE, off)
 #define CL_DVFS(off) _REG(CL_DVFS_BASE, off)
 #define TEST_REG(off) _REG(0x0, off)
-#define FUSE_RESERVED_ODMX(x) (0x1C8 + 4 * (x))
+
+/* HOST1X registers. */
+#define HOST1X_CH0_SYNC_BASE 0x2100
+#define HOST1X_CH0_SYNC_SYNCPT_9   (HOST1X_CH0_SYNC_BASE + 0xFA4)
+#define HOST1X_CH0_SYNC_SYNCPT_160 (HOST1X_CH0_SYNC_BASE + 0x1200)
 
 /*! EVP registers. */
 #define EVP_CPU_RESET_VECTOR 0x100
+#define EVP_COP_RESET_VECTOR 0x200
+#define EVP_COP_UNDEF_VECTOR 0x204
+#define EVP_COP_SWI_VECTOR 0x208
+#define EVP_COP_PREFETCH_ABORT_VECTOR 0x20C
+#define EVP_COP_DATA_ABORT_VECTOR 0x210
+#define EVP_COP_RSVD_VECTOR 0x214
+#define EVP_COP_IRQ_VECTOR 0x218
+#define EVP_COP_FIQ_VECTOR 0x21C
 
 /*! Misc registers. */
 #define APB_MISC_PP_STRAPPING_OPT_A 0x08
 #define APB_MISC_PP_PINMUX_GLOBAL 0x40
+#define APB_MISC_GP_HIDREV 0x804
 #define APB_MISC_GP_LCD_BL_PWM_CFGPADCTRL 0xA34
+#define APB_MISC_GP_SDMMC1_PAD_CFGPADCTRL 0xA98
+#define APB_MISC_GP_EMMC4_PAD_CFGPADCTRL 0xAB4
+#define APB_MISC_GP_EMMC4_PAD_PUPD_CFGPADCTRL 0xABC
 #define APB_MISC_GP_WIFI_EN_CFGPADCTRL 0xB64
 #define APB_MISC_GP_WIFI_RST_CFGPADCTRL 0xB68
 
@@ -117,7 +134,10 @@
 
 /*! Secure boot registers. */
 #define SB_CSR 0x0
+#define  SB_CSR_NS_RST_VEC_WR_DIS    (1 << 1)
+#define  SB_CSR_PIROM_DISABLE        (1 << 4)
 #define SB_AA64_RESET_LOW  0x30
+#define  SB_AA64_RST_AARCH64_MODE_EN (1 << 0)
 #define SB_AA64_RESET_HIGH 0x34
 
 /*! SOR registers. */
@@ -178,23 +198,34 @@
 #define  I2S_CG_SLCG_ENABLE (1 << 0)
 #define  I2S_CTRL_MASTER_EN (1 << 10)
 
-/*! Fuse registers. */
-#define FUSE_CTRL 0x0
-#define FUSE_ADDR 0x4
-#define FUSE_RDATA 0x8
-#define FUSE_WDATA 0xC
-#define FUSE_TIME_RD1 0x10
-#define FUSE_TIME_RD2 0x14
-#define FUSE_TIME_PGM1 0x18
-#define FUSE_TIME_PGM2 0x1C
-#define FUSE_PRIV2INTFC 0x20
-#define FUSE_FUSEBYPASS 0x24
-#define FUSE_PRIVATEKEYDISABLE 0x28
-#define FUSE_DISABLEREGPROGRAM 0x2C
-#define FUSE_WRITE_ACCESS_SW 0x30
-#define FUSE_PWR_GOOD_SW 0x34
-#define FUSE_SKU 0x110
-#define FUSE_SOC_SPEEDO_1 0x138
-#define FUSE_SPARE_BIT_5 0x394
+/*! PWM registers. */
+#define PWM_CONTROLLER_PWM_CSR_0 0x00
+#define PWM_CONTROLLER_PWM_CSR_1 0x10
+#define  PWM_CSR_EN (1 << 31)
+
+/*! Special registers. */
+#define EMC_SCRATCH0 0x324
+#define  EMC_HEKA_UPD (1 << 30)
+#define  EMC_SEPT_RUN (1 << 31)
+
+/*! Flow controller registers. */
+#define FLOW_CTLR_HALT_COP_EVENTS  0x4
+#define  HALT_COP_SEC        (1 << 23)
+#define  HALT_COP_MSEC       (1 << 24)
+#define  HALT_COP_USEC       (1 << 25)
+#define  HALT_COP_JTAG       (1 << 28)
+#define  HALT_COP_WAIT_EVENT (1 << 30)
+#define  HALT_COP_WAIT_IRQ   (1 << 31)
+#define  HALT_COP_MAX_CNT    0xFF
+#define FLOW_CTLR_HALT_CPU0_EVENTS 0x0
+#define FLOW_CTLR_HALT_CPU1_EVENTS 0x14
+#define FLOW_CTLR_HALT_CPU2_EVENTS 0x1C
+#define FLOW_CTLR_HALT_CPU3_EVENTS 0x24
+#define FLOW_CTLR_CPU0_CSR 0x8
+#define FLOW_CTLR_CPU1_CSR 0x18
+#define FLOW_CTLR_CPU2_CSR 0x20
+#define FLOW_CTLR_CPU3_CSR 0x28
+#define FLOW_CTLR_RAM_REPAIR 0x40
+#define FLOW_CTLR_BPMP_CLUSTER_CONTROL 0x98
 
 #endif

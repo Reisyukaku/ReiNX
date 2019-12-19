@@ -1,85 +1,112 @@
 /*
-* Copyright (c) 2018 naehrwert
-*
-* This program is free software; you can redistribute it and/or modify it
-* under the terms and conditions of the GNU General Public License,
-* version 2, as published by the Free Software Foundation.
-*
-* This program is distributed in the hope it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-* FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-* more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ * Copyright (c) 2018 naehrwert
+ * Copyright (c) 2018 balika011
+ * Copyright (c) 2019 CTCaer
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
-#include "i2c.h"
-#include "t210.h"
 #include "mc.h"
 #include "emc.h"
-#include "pmc.h"
-#include "util.h"
-#include "max77620.h"
 #include "sdram_param_t210.h"
+#include "max77620.h"
+#include "max7762x.h"
 #include "clock.h"
+#include "fuse.h"
+#include "i2c.h"
+#include "pmc.h"
+#include "t210.h"
+#include "util.h"
 
 #define CONFIG_SDRAM_COMPRESS_CFG
 
 #ifdef CONFIG_SDRAM_COMPRESS_CFG
 #include "lz.h"
-#include "sdram_lz.inl"
+#include "sdram_config_lz.inl"
 #else
-#include "sdram.inl"
+#include "sdram_config.inl"
 #endif
 
 static u32 _get_sdram_id()
 {
-	return (FUSE_RESERVED_ODMX(4) & 0x38) >> 3;
+	return (fuse_read_odm(4) & 0x38) >> 3;
 }
 
 static void _sdram_config(const sdram_params_t *params)
 {
-	PMC(0x45C) = (((4 * params->emc_pmc_scratch1 >> 2) + 0x80000000) ^ 0xFFFF) & 0xC000FFFF;
+	// Program DPD3/DPD4 regs (coldboot path).
+	// Enable sel_dpd on unused pins.
+	u32 dpd_req = (params->emc_pmc_scratch1 & 0x3FFFFFFF) | 0x80000000;
+	PMC(APBDEV_PMC_IO_DPD3_REQ) = (dpd_req ^ 0xFFFF) & 0xC000FFFF;
 	usleep(params->pmc_io_dpd3_req_wait);
 
-	u32 req = (4 * params->emc_pmc_scratch2 >> 2) + 0x80000000;
-	PMC(APBDEV_PMC_IO_DPD4_REQ) = (req >> 16 << 16) ^ 0x3FFF0000;
+	// Disable e_dpd_vttgen.
+	dpd_req = (params->emc_pmc_scratch2 & 0x3FFFFFFF) | 0x80000000;
+	PMC(APBDEV_PMC_IO_DPD4_REQ) = (dpd_req & 0xFFFF0000) ^ 0x3FFF0000;
 	usleep(params->pmc_io_dpd4_req_wait);
-	PMC(APBDEV_PMC_IO_DPD4_REQ) = (req ^ 0xFFFF) & 0xC000FFFF;
+
+	// Disable e_dpd_bg.
+	PMC(APBDEV_PMC_IO_DPD4_REQ) = (dpd_req ^ 0xFFFF) & 0xC000FFFF;
 	usleep(params->pmc_io_dpd4_req_wait);
+
 	PMC(APBDEV_PMC_WEAK_BIAS) = 0;
 	usleep(1);
 
+	// Start clocks.
 	CLOCK(CLK_RST_CONTROLLER_PLLM_MISC1) = params->pllm_setup_control;
 	CLOCK(CLK_RST_CONTROLLER_PLLM_MISC2) = 0;
+
+	// u32 tmp = (params->pllm_feedback_divider << 8) | params->pllm_input_divider | ((params->pllm_post_divider & 0xFFFF) << 20);
+	// CLOCK(CLK_RST_CONTROLLER_PLLM_BASE) = tmp;
+	// CLOCK(CLK_RST_CONTROLLER_PLLM_BASE) = tmp | 0x40000000;
 	CLOCK(CLK_RST_CONTROLLER_PLLM_BASE) = (params->pllm_feedback_divider << 8) | params->pllm_input_divider | 0x40000000 | ((params->pllm_post_divider & 0xFFFF) << 20);
 
 	u32 wait_end = get_tmr_us() + 300;
 	while (!(CLOCK(CLK_RST_CONTROLLER_PLLM_BASE) & 0x8000000))
 	{
 		if (get_tmr_us() >= wait_end)
-			goto break_nousleep;
+			goto break_nosleep;
 	}
 	usleep(10);
-break_nousleep:
 
+break_nosleep:
 	CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_EMC) = ((params->mc_emem_arb_misc0 >> 11) & 0x10000) | (params->emc_clock_source & 0xFFFEFFFF);
 	if (params->emc_clock_source_dll)
 		CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_EMC_DLL) = params->emc_clock_source_dll;
 	if (params->clear_clock2_mc1)
 		CLOCK(CLK_RST_CONTROLLER_CLK_ENB_W_CLR) = 0x40000000;
-	CLOCK(CLK_RST_CONTROLLER_CLK_ENB_H_SET) = 0x2000001;
-	CLOCK(CLK_RST_CONTROLLER_CLK_ENB_X_SET) = 0x4000;
-	CLOCK(CLK_RST_CONTROLLER_RST_DEV_H_CLR) = 0x2000001;
+
+	CLOCK(CLK_RST_CONTROLLER_CLK_ENB_H_SET) = 0x2000001; // Enable EMC and MEM clocks.
+	CLOCK(CLK_RST_CONTROLLER_CLK_ENB_X_SET) = 0x4000;    // Enable EMC_DLL clock.
+	CLOCK(CLK_RST_CONTROLLER_RST_DEV_H_CLR) = 0x2000001; // Clear EMC and MEM resets.
+
+	// Set pad macros.
 	EMC(EMC_PMACRO_VTTGEN_CTRL_0) = params->emc_pmacro_vttgen_ctrl0;
 	EMC(EMC_PMACRO_VTTGEN_CTRL_1) = params->emc_pmacro_vttgen_ctrl1;
 	EMC(EMC_PMACRO_VTTGEN_CTRL_2) = params->emc_pmacro_vttgen_ctrl2;
-	EMC(EMC_TIMING_CONTROL) = 1;
-	usleep(1);
+
+	EMC(EMC_TIMING_CONTROL) = 1; // Trigger timing update so above writes take place.
+	usleep(10); // Ensure the regulators settle.
+
+	// Select EMC write mux.
 	EMC(EMC_DBG) = (params->emc_dbg_write_mux << 1) | params->emc_dbg;
+
+	// Patch 2 using BCT spare variables.
 	if (params->emc_bct_spare2)
 		*(vu32 *)params->emc_bct_spare2 = params->emc_bct_spare3;
+
+	// Program CMD mapping. Required before brick mapping, else
+	// we can't guarantee CK will be differential at all times.
 	EMC(EMC_FBIO_CFG7) = params->emc_fbio_cfg7;
 	EMC(EMC_CMD_MAPPING_CMD0_0) = params->emc_cmd_mapping_cmd0_0;
 	EMC(EMC_CMD_MAPPING_CMD0_1) = params->emc_cmd_mapping_cmd0_1;
@@ -94,25 +121,40 @@ break_nousleep:
 	EMC(EMC_CMD_MAPPING_CMD3_1) = params->emc_cmd_mapping_cmd3_1;
 	EMC(EMC_CMD_MAPPING_CMD3_2) = params->emc_cmd_mapping_cmd3_2;
 	EMC(EMC_CMD_MAPPING_BYTE) = params->emc_cmd_mapping_byte;
+
+	// Program brick mapping.
 	EMC(EMC_PMACRO_BRICK_MAPPING_0) = params->emc_pmacro_brick_mapping0;
 	EMC(EMC_PMACRO_BRICK_MAPPING_1) = params->emc_pmacro_brick_mapping1;
 	EMC(EMC_PMACRO_BRICK_MAPPING_2) = params->emc_pmacro_brick_mapping2;
+
 	EMC(EMC_PMACRO_BRICK_CTRL_RFU1) = (params->emc_pmacro_brick_ctrl_rfu1 & 0x1120112) | 0x1EED1EED;
+
+	// This is required to do any reads from the pad macros.
 	EMC(EMC_CONFIG_SAMPLE_DELAY) = params->emc_config_sample_delay;
+
 	EMC(EMC_FBIO_CFG8) = params->emc_fbio_cfg8;
+
+	// Set swizzle for Rank 0.
 	EMC(EMC_SWIZZLE_RANK0_BYTE0) = params->emc_swizzle_rank0_byte0;
 	EMC(EMC_SWIZZLE_RANK0_BYTE1) = params->emc_swizzle_rank0_byte1;
 	EMC(EMC_SWIZZLE_RANK0_BYTE2) = params->emc_swizzle_rank0_byte2;
 	EMC(EMC_SWIZZLE_RANK0_BYTE3) = params->emc_swizzle_rank0_byte3;
+	// Set swizzle for Rank 1.
 	EMC(EMC_SWIZZLE_RANK1_BYTE0) = params->emc_swizzle_rank1_byte0;
 	EMC(EMC_SWIZZLE_RANK1_BYTE1) = params->emc_swizzle_rank1_byte1;
 	EMC(EMC_SWIZZLE_RANK1_BYTE2) = params->emc_swizzle_rank1_byte2;
 	EMC(EMC_SWIZZLE_RANK1_BYTE3) = params->emc_swizzle_rank1_byte3;
+
+	// Patch 4 using BCT spare variables.
 	if (params->emc_bct_spare6)
 		*(vu32 *)params->emc_bct_spare6 = params->emc_bct_spare7;
+
+	// Set pad controls.
 	EMC(EMC_XM2COMPPADCTRL) = params->emc_xm2_comp_pad_ctrl;
 	EMC(EMC_XM2COMPPADCTRL2) = params->emc_xm2_comp_pad_ctrl2;
 	EMC(EMC_XM2COMPPADCTRL3) = params->emc_xm2_comp_pad_ctrl3;
+
+	// Program Autocal controls with shadowed register fields.
 	EMC(EMC_AUTO_CAL_CONFIG2) = params->emc_auto_cal_config2;
 	EMC(EMC_AUTO_CAL_CONFIG3) = params->emc_auto_cal_config3;
 	EMC(EMC_AUTO_CAL_CONFIG4) = params->emc_auto_cal_config4;
@@ -120,6 +162,7 @@ break_nousleep:
 	EMC(EMC_AUTO_CAL_CONFIG6) = params->emc_auto_cal_config6;
 	EMC(EMC_AUTO_CAL_CONFIG7) = params->emc_auto_cal_config7;
 	EMC(EMC_AUTO_CAL_CONFIG8) = params->emc_auto_cal_config8;
+
 	EMC(EMC_PMACRO_RX_TERM) = params->emc_pmacro_rx_term;
 	EMC(EMC_PMACRO_DQ_TX_DRV) = params->emc_pmacro_dq_tx_drive;
 	EMC(EMC_PMACRO_CA_TX_DRV) = params->emc_pmacro_ca_tx_drive;
@@ -127,9 +170,11 @@ break_nousleep:
 	EMC(EMC_PMACRO_AUTOCAL_CFG_COMMON) = params->emc_pmacro_auto_cal_common;
 	EMC(EMC_AUTO_CAL_CHANNEL) = params->emc_auto_cal_channel;
 	EMC(EMC_PMACRO_ZCTRL) = params->emc_pmacro_zcrtl;
+
 	EMC(EMC_DLL_CFG_0) = params->emc_dll_cfg0;
 	EMC(EMC_DLL_CFG_1) = params->emc_dll_cfg1;
 	EMC(EMC_CFG_DIG_DLL_1) = params->emc_cfg_dig_dll_1;
+
 	EMC(EMC_DATA_BRLSHFT_0) = params->emc_data_brlshft0;
 	EMC(EMC_DATA_BRLSHFT_1) = params->emc_data_brlshft1;
 	EMC(EMC_DQS_BRLSHFT_0) = params->emc_dqs_brlshft0;
@@ -142,8 +187,10 @@ break_nousleep:
 	EMC(EMC_QUSE_BRLSHFT_1) = params->emc_quse_brlshft1;
 	EMC(EMC_QUSE_BRLSHFT_2) = params->emc_quse_brlshft2;
 	EMC(EMC_QUSE_BRLSHFT_3) = params->emc_quse_brlshft3;
+
 	EMC(EMC_PMACRO_BRICK_CTRL_RFU1) = (params->emc_pmacro_brick_ctrl_rfu1 & 0x1BF01BF) | 0x1E401E40;
 	EMC(EMC_PMACRO_PAD_CFG_CTRL) = params->emc_pmacro_pad_cfg_ctrl;
+
 	EMC(EMC_PMACRO_CMD_BRICK_CTRL_FDPD) = params->emc_pmacro_cmd_brick_ctrl_fdpd;
 	EMC(EMC_PMACRO_BRICK_CTRL_RFU2) = params->emc_pmacro_brick_ctrl_rfu2 & 0xFF7FFF7F;
 	EMC(EMC_PMACRO_DATA_BRICK_CTRL_FDPD) = params->emc_pmacro_data_brick_ctrl_fdpd;
@@ -154,6 +201,7 @@ break_nousleep:
 	EMC(EMC_PMACRO_DATA_RX_TERM_MODE) = params->emc_pmacro_data_rx_term_mode;
 	EMC(EMC_PMACRO_CMD_RX_TERM_MODE) = params->emc_pmacro_cmd_rx_term_mode;
 	EMC(EMC_PMACRO_CMD_PAD_TX_CTRL) = params->emc_pmacro_cmd_pad_tx_ctrl;
+
 	EMC(EMC_CFG_3) = params->emc_cfg3;
 	EMC(EMC_PMACRO_TX_PWRD_0) = params->emc_pmacro_tx_pwrd0;
 	EMC(EMC_PMACRO_TX_PWRD_1) = params->emc_pmacro_tx_pwrd1;
@@ -179,6 +227,7 @@ break_nousleep:
 	EMC(EMC_PMACRO_IB_VREF_DQS_0) = params->emc_pmacro_ib_vref_dqs_0;
 	EMC(EMC_PMACRO_IB_VREF_DQS_1) = params->emc_pmacro_ib_vref_dqs_1;
 	EMC(EMC_PMACRO_IB_RXRT) = params->emc_pmacro_ib_rxrt;
+
 	EMC(EMC_PMACRO_QUSE_DDLL_RANK0_0) = params->emc_pmacro_quse_ddll_rank0_0;
 	EMC(EMC_PMACRO_QUSE_DDLL_RANK0_1) = params->emc_pmacro_quse_ddll_rank0_1;
 	EMC(EMC_PMACRO_QUSE_DDLL_RANK0_2) = params->emc_pmacro_quse_ddll_rank0_2;
@@ -192,6 +241,7 @@ break_nousleep:
 	EMC(EMC_PMACRO_QUSE_DDLL_RANK1_4) = params->emc_pmacro_quse_ddll_rank1_4;
 	EMC(EMC_PMACRO_QUSE_DDLL_RANK1_5) = params->emc_pmacro_quse_ddll_rank1_5;
 	EMC(EMC_PMACRO_BRICK_CTRL_RFU1) = params->emc_pmacro_brick_ctrl_rfu1;
+
 	EMC(EMC_PMACRO_OB_DDLL_LONG_DQ_RANK0_0) = params->emc_pmacro_ob_ddll_long_dq_rank0_0;
 	EMC(EMC_PMACRO_OB_DDLL_LONG_DQ_RANK0_1) = params->emc_pmacro_ob_ddll_long_dq_rank0_1;
 	EMC(EMC_PMACRO_OB_DDLL_LONG_DQ_RANK0_2) = params->emc_pmacro_ob_ddll_long_dq_rank0_2;
@@ -204,6 +254,7 @@ break_nousleep:
 	EMC(EMC_PMACRO_OB_DDLL_LONG_DQ_RANK1_3) = params->emc_pmacro_ob_ddll_long_dq_rank1_3;
 	EMC(EMC_PMACRO_OB_DDLL_LONG_DQ_RANK1_4) = params->emc_pmacro_ob_ddll_long_dq_rank1_4;
 	EMC(EMC_PMACRO_OB_DDLL_LONG_DQ_RANK1_5) = params->emc_pmacro_ob_ddll_long_dq_rank1_5;
+
 	EMC(EMC_PMACRO_OB_DDLL_LONG_DQS_RANK0_0) = params->emc_pmacro_ob_ddll_long_dqs_rank0_0;
 	EMC(EMC_PMACRO_OB_DDLL_LONG_DQS_RANK0_1) = params->emc_pmacro_ob_ddll_long_dqs_rank0_1;
 	EMC(EMC_PMACRO_OB_DDLL_LONG_DQS_RANK0_2) = params->emc_pmacro_ob_ddll_long_dqs_rank0_2;
@@ -224,6 +275,7 @@ break_nousleep:
 	EMC(EMC_PMACRO_IB_DDLL_LONG_DQS_RANK1_1) = params->emc_pmacro_ib_ddll_long_dqs_rank1_1;
 	EMC(EMC_PMACRO_IB_DDLL_LONG_DQS_RANK1_2) = params->emc_pmacro_ib_ddll_long_dqs_rank1_2;
 	EMC(EMC_PMACRO_IB_DDLL_LONG_DQS_RANK1_3) = params->emc_pmacro_ib_ddll_long_dqs_rank1_3;
+
 	EMC(EMC_PMACRO_DDLL_LONG_CMD_0) = params->emc_pmacro_ddll_long_cmd_0;
 	EMC(EMC_PMACRO_DDLL_LONG_CMD_1) = params->emc_pmacro_ddll_long_cmd_1;
 	EMC(EMC_PMACRO_DDLL_LONG_CMD_2) = params->emc_pmacro_ddll_long_cmd_2;
@@ -232,10 +284,17 @@ break_nousleep:
 	EMC(EMC_PMACRO_DDLL_SHORT_CMD_0) = params->emc_pmacro_ddll_short_cmd_0;
 	EMC(EMC_PMACRO_DDLL_SHORT_CMD_1) = params->emc_pmacro_ddll_short_cmd_1;
 	EMC(EMC_PMACRO_DDLL_SHORT_CMD_2) = params->emc_pmacro_ddll_short_cmd_2;
+
+	// Common pad macro (cpm).
 	EMC(EMC_PMACRO_COMMON_PAD_TX_CTRL) = (params->emc_pmacro_common_pad_tx_ctrl & 1) | 0xE;
+
+	// Patch 3 using BCT spare variables.
 	if (params->emc_bct_spare4)
 		*(vu32 *)params->emc_bct_spare4 = params->emc_bct_spare5;
-	EMC(EMC_TIMING_CONTROL) = 1;
+
+	EMC(EMC_TIMING_CONTROL) = 1; // Trigger timing update so above writes take place.
+
+	// Initialize MC VPR settings.
 	MC(MC_VIDEO_PROTECT_BOM) = params->mc_video_protect_bom;
 	MC(MC_VIDEO_PROTECT_BOM_ADR_HI) = params->mc_video_protect_bom_adr_hi;
 	MC(MC_VIDEO_PROTECT_SIZE_MB) = params->mc_video_protect_size_mb;
@@ -243,20 +302,32 @@ break_nousleep:
 	MC(MC_VIDEO_PROTECT_VPR_OVERRIDE1) = params->mc_video_protect_vpr_override1;
 	MC(MC_VIDEO_PROTECT_GPU_OVERRIDE_0) = params->mc_video_protect_gpu_override0;
 	MC(MC_VIDEO_PROTECT_GPU_OVERRIDE_1) = params->mc_video_protect_gpu_override1;
+
+	// Program SDRAM geometry parameters.
 	MC(MC_EMEM_ADR_CFG) = params->mc_emem_adr_cfg;
 	MC(MC_EMEM_ADR_CFG_DEV0) = params->mc_emem_adr_cfg_dev0;
 	MC(MC_EMEM_ADR_CFG_DEV1) = params->mc_emem_adr_cfg_dev1;
 	MC(MC_EMEM_ADR_CFG_CHANNEL_MASK) = params->mc_emem_adr_cfg_channel_mask;
+
+	// Program bank swizzling.
 	MC(MC_EMEM_ADR_CFG_BANK_MASK_0) = params->mc_emem_adr_cfg_bank_mask0;
 	MC(MC_EMEM_ADR_CFG_BANK_MASK_1) = params->mc_emem_adr_cfg_bank_mask1;
 	MC(MC_EMEM_ADR_CFG_BANK_MASK_2) = params->mc_emem_adr_cfg_bank_mask2;
+
+	// Program external memory aperture (base and size).
 	MC(MC_EMEM_CFG) = params->mc_emem_cfg;
+
+	// Program SEC carveout (base and size).
 	MC(MC_SEC_CARVEOUT_BOM) = params->mc_sec_carveout_bom;
 	MC(MC_SEC_CARVEOUT_ADR_HI) = params->mc_sec_carveout_adr_hi;
 	MC(MC_SEC_CARVEOUT_SIZE_MB) = params->mc_sec_carveout_size_mb;
+
+	// Program MTS carveout (base and size).
 	MC(MC_MTS_CARVEOUT_BOM) = params->mc_mts_carveout_bom;
 	MC(MC_MTS_CARVEOUT_ADR_HI) = params->mc_mts_carveout_adr_hi;
 	MC(MC_MTS_CARVEOUT_SIZE_MB) = params->mc_mts_carveout_size_mb;
+
+	// Program the memory arbiter.
 	MC(MC_EMEM_ARB_CFG) = params->mc_emem_arb_cfg;
 	MC(MC_EMEM_ARB_OUTSTANDING_REQ) = params->mc_emem_arb_outstanding_req;
 	MC(MC_EMEM_ARB_REFPB_HP_CTRL) = params->emc_emem_arb_refpb_hp_ctrl;
@@ -285,21 +356,38 @@ break_nousleep:
 	MC(MC_EMEM_ARB_OVERRIDE_1) = params->mc_emem_arb_override1;
 	MC(MC_EMEM_ARB_RSV) = params->mc_emem_arb_rsv;
 	MC(MC_DA_CONFIG0) = params->mc_da_cfg0;
-	MC(MC_TIMING_CONTROL) = 1;
+
+	MC(MC_TIMING_CONTROL) = 1; // Trigger MC timing update.
+
+	// Program second-level clock enable overrides.
 	MC(MC_CLKEN_OVERRIDE) = params->mc_clken_override;
+
+	// Program statistics gathering.
 	MC(MC_STAT_CONTROL) = params->mc_stat_control;
+
+	// Program SDRAM geometry parameters.
 	EMC(EMC_ADR_CFG) = params->emc_adr_cfg;
+
+	// Program second-level clock enable overrides.
 	EMC(EMC_CLKEN_OVERRIDE) = params->emc_clken_override;
+
+	// Program EMC pad auto calibration.
 	EMC(EMC_PMACRO_AUTOCAL_CFG_0) = params->emc_pmacro_auto_cal_cfg0;
 	EMC(EMC_PMACRO_AUTOCAL_CFG_1) = params->emc_pmacro_auto_cal_cfg1;
 	EMC(EMC_PMACRO_AUTOCAL_CFG_2) = params->emc_pmacro_auto_cal_cfg2;
+
 	EMC(EMC_AUTO_CAL_VREF_SEL_0) = params->emc_auto_cal_vref_sel0;
 	EMC(EMC_AUTO_CAL_VREF_SEL_1) = params->emc_auto_cal_vref_sel1;
+
 	EMC(EMC_AUTO_CAL_INTERVAL) = params->emc_auto_cal_interval;
 	EMC(EMC_AUTO_CAL_CONFIG) = params->emc_auto_cal_config;
 	usleep(params->emc_auto_cal_wait);
+
+	// Patch 5 using BCT spare variables.
 	if (params->emc_bct_spare8)
 		*(vu32 *)params->emc_bct_spare8 = params->emc_bct_spare9;
+
+	// Program EMC timing configuration.
 	EMC(EMC_CFG_2) = params->emc_cfg2;
 	EMC(EMC_CFG_PIPE) = params->emc_cfg_pipe;
 	EMC(EMC_CFG_PIPE_1) = params->emc_cfg_pipe1;
@@ -344,9 +432,11 @@ break_nousleep:
 	EMC(EMC_EINPUT_DURATION) = params->emc_einput_duration;
 	EMC(EMC_PUTERM_EXTRA) = params->emc_puterm_extra;
 	EMC(EMC_PUTERM_WIDTH) = params->emc_puterm_width;
+
 	EMC(EMC_PMACRO_COMMON_PAD_TX_CTRL) = params->emc_pmacro_common_pad_tx_ctrl;
 	EMC(EMC_DBG) = params->emc_dbg;
 	EMC(EMC_QRST) = params->emc_qrst;
+	EMC(EMC_ISSUE_QRST) = 1;
 	EMC(EMC_ISSUE_QRST) = 0;
 	EMC(EMC_QSAFE) = params->emc_qsafe;
 	EMC(EMC_RDV) = params->emc_rdv;
@@ -379,6 +469,8 @@ break_nousleep:
 	EMC(EMC_ODT_WRITE) = params->emc_odt_write;
 	EMC(EMC_CFG_DIG_DLL) = params->emc_cfg_dig_dll;
 	EMC(EMC_CFG_DIG_DLL_PERIOD) = params->emc_cfg_dig_dll_period;
+
+	// Don't write CFG_ADR_EN (bit 1) here - lock bit written later.
 	EMC(EMC_FBIO_SPARE) = params->emc_fbio_spare & 0xFFFFFFFD;
 	EMC(EMC_CFG_RSV) = params->emc_cfg_rsv;
 	EMC(EMC_PMC_SCRATCH1) = params->emc_pmc_scratch1;
@@ -386,70 +478,104 @@ break_nousleep:
 	EMC(EMC_PMC_SCRATCH3) = params->emc_pmc_scratch3;
 	EMC(EMC_ACPD_CONTROL) = params->emc_acpd_control;
 	EMC(EMC_TXDSRVTTGEN) = params->emc_txdsrvttgen;
+
+	// Set pipe bypass enable bits before sending any DRAM commands.
 	EMC(EMC_CFG) = (params->emc_cfg & 0xE) | 0x3C00000;
-	if (params->boot_rom_patch_control & 0x80000000)
+
+	// Patch BootROM.
+	if (params->boot_rom_patch_control & (1 << 31))
 	{
-		*(vu32 *)(4 * (params->boot_rom_patch_control + 0x1C000000)) = params->boot_rom_patch_data;
-		MC(MC_TIMING_CONTROL) = 1;
+		*(vu32 *)(APB_MISC_BASE + params->boot_rom_patch_control * 4) = params->boot_rom_patch_data;
+		MC(MC_TIMING_CONTROL) = 1; // Trigger MC timing update.
 	}
-	PMC(0x45C) = ((4 * params->emc_pmc_scratch1 >> 2) + 0x40000000) & 0xCFFF0000;
+
+	// Release SEL_DPD_CMD.
+	PMC(APBDEV_PMC_IO_DPD3_REQ) = ((params->emc_pmc_scratch1 & 0x3FFFFFFF) | 0x40000000) & 0xCFFF0000;
 	usleep(params->pmc_io_dpd3_req_wait);
+
+	// Set autocal interval if not configured.
 	if (!params->emc_auto_cal_interval)
 		EMC(EMC_AUTO_CAL_CONFIG) = params->emc_auto_cal_config | 0x200;
+
 	EMC(EMC_PMACRO_BRICK_CTRL_RFU2) = params->emc_pmacro_brick_ctrl_rfu2;
+
+	// ZQ CAL setup (not actually issuing ZQ CAL now).
 	if (params->emc_zcal_warm_cold_boot_enables & 1)
 	{
 		if (params->memory_type == 2)
-			EMC(EMC_ZCAL_WAIT_CNT) = 8 * params->emc_zcal_wait_cnt;
+			EMC(EMC_ZCAL_WAIT_CNT) = params->emc_zcal_wait_cnt << 3;
 		if (params->memory_type == 3)
 		{
 			EMC(EMC_ZCAL_WAIT_CNT) = params->emc_zcal_wait_cnt;
 			EMC(EMC_ZCAL_MRW_CMD) = params->emc_zcal_mrw_cmd;
 		}
 	}
-	EMC(EMC_TIMING_CONTROL) = 1;
+
+	EMC(EMC_TIMING_CONTROL) = 1; // Trigger timing update so above writes take place.
 	usleep(params->emc_timing_control_wait);
-	PMC(0x4E4) &= 0xFFF8007F;
+
+	// Deassert HOLD_CKE_LOW.
+	PMC(APBDEV_PMC_DDR_CNTRL) &= 0xFFF8007F;
 	usleep(params->pmc_ddr_ctrl_wait);
-	if (params->memory_type == 2)
+
+	// Set clock enable signal.
+	u32 pin_gpio_cfg = (params->emc_pin_gpio_enable << 16) | (params->emc_pin_gpio << 12);
+	if (params->memory_type == 2 || params->memory_type == 3)
 	{
-		EMC(EMC_PIN) = (params->emc_pin_gpio_enable << 16) | (params->emc_pin_gpio << 12);
+		EMC(EMC_PIN) = pin_gpio_cfg;
+		(void)EMC(EMC_PIN);
 		usleep(params->emc_pin_extra_wait + 200);
-		EMC(EMC_PIN) = ((params->emc_pin_gpio_enable << 16) | (params->emc_pin_gpio << 12)) + 256;
-		usleep(params->emc_pin_extra_wait + 500);
+		EMC(EMC_PIN) = pin_gpio_cfg | 0x100;
+		(void)EMC(EMC_PIN);
 	}
+
 	if (params->memory_type == 3)
-	{
-		EMC(EMC_PIN) = (params->emc_pin_gpio_enable << 16) | (params->emc_pin_gpio << 12);
-		usleep(params->emc_pin_extra_wait + 200);
-		EMC(EMC_PIN) = ((params->emc_pin_gpio_enable << 16) | (params->emc_pin_gpio << 12)) + 256;
 		usleep(params->emc_pin_extra_wait + 2000);
-	}
-	EMC(EMC_PIN) = ((params->emc_pin_gpio_enable << 16) | (params->emc_pin_gpio << 12)) + 0x101;
+	else if (params->memory_type == 2)
+		usleep(params->emc_pin_extra_wait + 500);
+
+	// Enable clock enable signal.
+	EMC(EMC_PIN) = pin_gpio_cfg | 0x101;
+	(void)EMC(EMC_PIN);
 	usleep(params->emc_pin_program_wait);
+
+	// Send NOP (trigger just needs to be non-zero).
 	if (params->memory_type != 3)
 		EMC(EMC_NOP) = (params->emc_dev_select << 30) + 1;
+
+	// On coldboot w/LPDDR2/3, wait 200 uSec after asserting CKE high.
 	if (params->memory_type == 1)
 		usleep(params->emc_pin_extra_wait + 200);
+
+	// Init zq calibration,
 	if (params->memory_type == 3)
 	{
+		// Patch 6 using BCT spare variables.
 		if (params->emc_bct_spare10)
 			*(vu32 *)params->emc_bct_spare10 = params->emc_bct_spare11;
+
+		// Write mode registers.
 		EMC(EMC_MRW2) = params->emc_mrw2;
 		EMC(EMC_MRW) = params->emc_mrw1;
 		EMC(EMC_MRW3) = params->emc_mrw3;
 		EMC(EMC_MRW4) = params->emc_mrw4;
 		EMC(EMC_MRW6) = params->emc_mrw6;
 		EMC(EMC_MRW14) = params->emc_mrw14;
+
 		EMC(EMC_MRW8) = params->emc_mrw8;
 		EMC(EMC_MRW12) = params->emc_mrw12;
 		EMC(EMC_MRW9) = params->emc_mrw9;
 		EMC(EMC_MRW13) = params->emc_mrw13;
+
 		if (params->emc_zcal_warm_cold_boot_enables & 1)
 		{
+			// Issue ZQCAL start, device 0.
 			EMC(EMC_ZQ_CAL) = params->emc_zcal_init_dev0;
 			usleep(params->emc_zcal_init_wait);
+
+			// Issue ZQCAL latch.
 			EMC(EMC_ZQ_CAL) = params->emc_zcal_init_dev0 ^ 3;
+			// Same for device 1.
 			if (!(params->emc_dev_select & 2))
 			{
 				EMC(EMC_ZQ_CAL) = params->emc_zcal_init_dev1;
@@ -458,54 +584,107 @@ break_nousleep:
 			}
 		}
 	}
-	PMC(0x1D0) = params->pmc_ddr_cfg;
+
+	// Set package and DPD pad control.
+	PMC(APBDEV_PMC_DDR_CFG) = params->pmc_ddr_cfg;
+
+	// Start periodic ZQ calibration (LPDDRx only).
 	if (params->memory_type - 1 <= 2)
 	{
 		EMC(EMC_ZCAL_INTERVAL) = params->emc_zcal_interval;
 		EMC(EMC_ZCAL_WAIT_CNT) = params->emc_zcal_wait_cnt;
 		EMC(EMC_ZCAL_MRW_CMD) = params->emc_zcal_mrw_cmd;
 	}
+
+	// Patch 7 using BCT spare variables.
 	if (params->emc_bct_spare12)
 		*(vu32 *)params->emc_bct_spare12 = params->emc_bct_spare13;
-	EMC(EMC_TIMING_CONTROL) = 1;
+
+	EMC(EMC_TIMING_CONTROL) = 1; // Trigger timing update so above writes take place.
+
 	if (params->emc_extra_refresh_num)
-		EMC(EMC_REF) = ((1 << params->emc_extra_refresh_num << 8) - 0xFD) | (params->emc_pin_gpio << 30);
+		EMC(EMC_REF) = (((1 << params->emc_extra_refresh_num) - 1) << 8) | (params->emc_dev_select << 30) | 3;
+
+	// Enable refresh.
 	EMC(EMC_REFCTRL) = params->emc_dev_select | 0x80000000;
+
 	EMC(EMC_DYN_SELF_REF_CONTROL) = params->emc_dyn_self_ref_control;
 	EMC(EMC_CFG_UPDATE) = params->emc_cfg_update;
 	EMC(EMC_CFG) = params->emc_cfg;
 	EMC(EMC_FDPD_CTRL_DQ) = params->emc_fdpd_ctrl_dq;
 	EMC(EMC_FDPD_CTRL_CMD) = params->emc_fdpd_ctrl_cmd;
 	EMC(EMC_SEL_DPD_CTRL) = params->emc_sel_dpd_ctrl;
+
+	// Write addr swizzle lock bit.
 	EMC(EMC_FBIO_SPARE) = params->emc_fbio_spare | 2;
-	EMC(EMC_TIMING_CONTROL) = 1;
+
+	EMC(EMC_TIMING_CONTROL) = 1; // Re-trigger timing to latch power saving functions.
+
+	// Enable EMC pipe clock gating.
 	EMC(EMC_CFG_PIPE_CLK) = params->emc_cfg_pipe_clk;
+
+	// Depending on freqency, enable CMD/CLK fdpd.
 	EMC(EMC_FDPD_CTRL_CMD_NO_RAMP) = params->emc_fdpd_ctrl_cmd_no_ramp;
-	SYSREG(AHB_ARBITRATION_XBAR_CTRL) = (SYSREG(AHB_ARBITRATION_XBAR_CTRL) & 0xFFFEFFFF) | ((params->ahb_arbitration_xbar_ctrl_meminit_done & 0xFFFF) << 16);
+
+	// Enable arbiter.
+	SYSREG(AHB_ARBITRATION_XBAR_CTRL) = (SYSREG(AHB_ARBITRATION_XBAR_CTRL) & 0xFFFEFFFF) | (params->ahb_arbitration_xbar_ctrl_meminit_done << 16);
+
+	// Lock carveouts per BCT cfg.
 	MC(MC_VIDEO_PROTECT_REG_CTRL) = params->mc_video_protect_write_access;
 	MC(MC_SEC_CARVEOUT_REG_CTRL) = params->mc_sec_carveout_protect_write_access;
 	MC(MC_MTS_CARVEOUT_REG_CTRL) = params->mc_mts_carveout_reg_ctrl;
-	MC(MC_EMEM_CFG_ACCESS_CTRL) = 1; //Disable write access to a bunch of MC registers.
+
+	//Disable write access to a bunch of EMC registers.
+	MC(MC_EMEM_CFG_ACCESS_CTRL) = 1;
 }
 
-const void *sdram_get_params()
+sdram_params_t *sdram_get_params()
 {
-    sdram_params_t *sdram_params;
-
 #ifdef CONFIG_SDRAM_COMPRESS_CFG
 	u8 *buf = (u8 *)0x40030000;
 	LZ_Uncompress(_dram_cfg_lz, buf, sizeof(_dram_cfg_lz));
-	sdram_params = (const void *)&buf[sizeof(sdram_params_t) * _get_sdram_id()];
+	return (sdram_params_t *)&buf[sizeof(sdram_params_t) * _get_sdram_id()];
 #else
-	sdram_params = _dram_cfgs[_get_sdram_id()];
+	return _dram_cfgs[_get_sdram_id()];
 #endif
+}
 
-    sdram_params->boot_rom_patch_control = (1 << 31) | (((IPATCH_BASE + 4) - APB_MISC_BASE) / 4);
-	u32 addr = 0x10459E; // Bootrom address for warmboot sig check.
-	u32 data = 0x2000;   // MOV R0, #0.
-	sdram_params->boot_rom_patch_data = ((addr/2) << 16) | (data & 0xffff);
-    
-    return sdram_params;
+/*
+ * Function: sdram_get_params_patched
+ *
+ * This code implements a warmboot exploit. Warmboot, that is actually so hot, it burns Nvidia once again.
+ * If the boot_rom_patch_control's MSB is set, it uses it as an index to
+ * APB_MISC_BASE (u32 array) and sets it to the value of boot_rom_patch_data.
+ * (The MSB falls out when it gets multiplied by sizeof(u32)).
+ * Because the bootrom does not do any boundary checks, it lets us write anywhere and anything.
+ * Ipatch hardware let us apply 12 changes to the bootrom and can be changed any time.
+ * The first patch is not needed any more when the exploit is triggered, so we overwrite that.
+ * 0x10459E is the address where it returns an error when the signature is not valid.
+ * We change that to MOV R0, #0, so we pass the check.
+ *
+ * Note: The modulus in the header must match and validated.
+ */
+
+sdram_params_t *sdram_get_params_patched()
+{
+	#define IPATCH_CONFIG(addr, data) (((addr - 0x100000) / 2) << 16 | (data & 0xffff))
+	sdram_params_t *sdram_params = sdram_get_params();
+
+	// Disable Warmboot signature check.
+	sdram_params->boot_rom_patch_control = (1 << 31) | (((IPATCH_BASE + 4) - APB_MISC_BASE) / 4);
+	sdram_params->boot_rom_patch_data = IPATCH_CONFIG(0x10459E, 0x2000);
+/*
+	// Disable SBK lock.
+	sdram_params->emc_bct_spare8 = (IPATCH_BASE + 7 * 4);
+	sdram_params->emc_bct_spare9 = IPATCH_CONFIG(0x10210E, 0x2000);
+
+	// Disable bootrom read lock.
+	sdram_params->emc_bct_spare10 = (IPATCH_BASE + 10 * 4);
+	sdram_params->emc_bct_spare11 = IPATCH_CONFIG(0x100FDC, 0xF000);
+	sdram_params->emc_bct_spare12 = (IPATCH_BASE + 11 * 4);
+	sdram_params->emc_bct_spare13 = IPATCH_CONFIG(0x100FDE, 0xE320);
+*/
+	return sdram_params;
 }
 
 void sdram_init()
@@ -513,16 +692,24 @@ void sdram_init()
 	//TODO: sdram_id should be in [0,4].
 	const sdram_params_t *params = (const sdram_params_t *)sdram_get_params();
 
-	i2c_send_byte(I2C_5, 0x3C, MAX77620_REG_SD_CFG2, 0x05);
-	i2c_send_byte(I2C_5, 0x3C, MAX77620_REG_SD1, 40); //40 = (1000 * 1100 - 600000) / 12500 -> 1.1V
+	// Set DRAM voltage.
+	i2c_send_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_SD_CFG2, 0x05);
+	max77620_regulator_set_voltage(REGULATOR_SD1, 1100000);
 
+	// VDDP Select.
 	PMC(APBDEV_PMC_VDDP_SEL) = params->pmc_vddp_sel;
 	usleep(params->pmc_vddp_sel_wait);
+
+	// Set DDR pad voltage.
 	PMC(APBDEV_PMC_DDR_PWR) = PMC(APBDEV_PMC_DDR_PWR);
+
+	// Turn on MEM IO Power.
 	PMC(APBDEV_PMC_NO_IOPOWER) = params->pmc_no_io_power;
 	PMC(APBDEV_PMC_REG_SHORT) = params->pmc_reg_short;
+
 	PMC(APBDEV_PMC_DDR_CNTRL) = params->pmc_ddr_ctrl;
 
+	// Patch 1 using BCT spare variables
 	if (params->emc_bct_spare0)
 		*(vu32 *)params->emc_bct_spare0 = params->emc_bct_spare1;
 

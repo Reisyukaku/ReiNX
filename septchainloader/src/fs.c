@@ -14,10 +14,6 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <stddef.h>
-#include <string.h>
-#include "hwinit.h"
-#include "hwinit/ff.h"
 #include "fs.h"
 
 sdmmc_t sd_sdmmc;
@@ -46,7 +42,7 @@ void sdUnmount() {
 
 u32 fopen(const char *path, const char *mode) {
     u32 m = (mode[0] == 0x77 ? (FA_WRITE|FA_CREATE_NEW) : FA_READ);
-    if (f_open(&fp, path, m) != FR_OK)
+    if (f_open(&fp, path, m) != FR_OK) 
         return 0;
     return 1;
 }
@@ -103,9 +99,9 @@ size_t enumerateDir(char ***output, char *path, char *pattern) {
     strcpy(pathb, path);
     pathb[pathlen] = '/';
 
-    int i = 0;
+    int i = 0; 
     while (fno.fname[0] != 0 && fr == FR_OK) {
-        if (fno.fname[0] == '.') goto next;
+        if (fno.fname[0] == '.') goto next;  
         out = (char **)realloc(out, (i+1) * sizeof(char *));
         out[i] = (char *)malloc(FF_LFN_BUF);
         strcpy(out[i], pathb);

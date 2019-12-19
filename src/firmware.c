@@ -212,17 +212,19 @@ void launch() {
 void firmware() {
     //Init display
     display_init();
-    gfx_init_ctxt(&gfx_ctxt, display_init_framebuffer(), 1280, 720, 768);
+    gfx_init_ctxt(&gfx_ctxt, display_init_framebuffer(), 1280, 720, 720);
     gfx_clear_color(&gfx_ctxt, BLACK);
     gfx_con_init(&gfx_con, &gfx_ctxt);
     gfx_con_setcol(&gfx_con, DEFAULT_TEXT_COL, 0, 0);
+    display_backlight_pwm_init();
+    display_backlight_brightness(100, 5000);
 
     //Mount SD
     if (!sdMount())
         error("Failed to init SD card!\nPress POWER to power off, or any other key to continue without SD.\n");
 
     //Chainload ReiNX if applicable
-    if(PMC(APBDEV_PMC_SCRATCH49) != 69 && PMC(APBDEV_PMC_SCRATCH49) != 67 && fopen("/ReiNX.bin", "rb")) {
+    if(EMC(EMC_SCRATCH0) != 69 && EMC(EMC_SCRATCH0) != 67 && fopen("/ReiNX.bin", "rb")) {
         size_t size = fsize();
         u8 *payload = malloc(size);
         fread((void*)PAYLOAD_ADDR, size, 1);
@@ -234,13 +236,14 @@ void firmware() {
                 display_end();
                 CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_V) |= 0x400; // Enable AHUB clock.
                 CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_Y) |= 0x40;  // Enable APE clock.
-                PMC(APBDEV_PMC_SCRATCH49) = 69;
+                EMC(EMC_SCRATCH0) = 69;
                 ((void (*)())PAYLOAD_ADDR)();
             }
         }
     }
     SYSREG(AHB_AHB_SPARE_REG) &= (vu32)0xFFFFFF9F;
-    PMC(APBDEV_PMC_SCRATCH49) = 0;
+    PMC(APBDEV_PMC_SCRATCH49) = PMC(APBDEV_PMC_SCRATCH49) & 0xFFFFFFFC;
+    EMC(EMC_SCRATCH0) = 0;
 
     //Chainload recovery if applicable
     if(btn_read() & BTN_VOL_UP){
@@ -248,14 +251,12 @@ void firmware() {
             fread((void*)PAYLOAD_ADDR, fsize(), 1);
             fclose();
             if(!fopen("/ReiNX.bin", "rb")) {
-                memcpy((void *)0x82000000, (void *)0x40008000, 0x1ed58);
+                memcpy((void *)0x82000000, (void *)0x40008000, fsize());
             } else {
-                PMC(APBDEV_PMC_SCRATCH49) = 69;
+                EMC(EMC_SCRATCH0) = 69;
                 fclose();
             }
             sdUnmount();
-            CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_V) |= 0x400; // Enable AHUB clock.
-            CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_Y) |= 0x40;  // Enable APE clock.
             ((void (*)())PAYLOAD_ADDR)();
         } else {
             error("Failed to launch recovery menu!\nIs it missing from /ReiNX folder?\n");

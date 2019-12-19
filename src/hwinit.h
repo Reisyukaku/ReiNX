@@ -33,6 +33,7 @@
 #include "hwinit/util.h"
 #include "hwinit/tsec.h"
 #include "hwinit/kfuse.h"
+#include "hwinit/fuse.h"
 #include "hwinit/max77620.h"
 #include "hwinit/max7762x.h"
 #include "hwinit/gpio.h"

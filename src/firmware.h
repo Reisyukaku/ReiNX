@@ -25,6 +25,7 @@
 #include "patches.h"
 #include "secmon.h"
 #include "sept.h"
+#include "hwinit/di.h"
 
 //Boot status
 #define BOOT_STATE_ADDR (vu32 *)0x40002EF8
