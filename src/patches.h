@@ -136,6 +136,14 @@ static u32 PRC_ID_RCV_900[] =
 {
     0xA9BF2FEA, 0xF9404BEB, 0x2A1703EA, 0xD37EF54A, 0xF86A696A, 0x92FFFFE9, 0x8A090148, 0xD2FFFFE9, 0x8A09014A, 0xD2FFFFC9, 0xEB09015F, 0x54000100, 0xA9BF27E8, 0xF9400368, 0xF9401D08, 0xAA1B03E0, 0xD63F0100, 0xA8C127E8, 0xAA0003E8, 0xA8C12FEA, 0xAA0803E0
 };
+static u32 PRC_ID_SND_1000[] =
+{
+	0xA9BF2FEA, 0xF94063EB, 0x2A1603EA, 0xD37EF54A, 0xF86A696A, 0x92FFFFE9, 0x8A090148, 0xD2FFFFE9, 0x8A09014A, 0xD2FFFFC9, 0xEB09015F, 0x54000100, 0xA9BF27E8, 0xF94002E8, 0xF9401D08, 0xAA1703E0, 0xD63F0100, 0xA8C127E8, 0xAA0003E8, 0xA8C12FEA, 0xAA0803E0
+};
+static u32 PRC_ID_RCV_1000[] =
+{
+	0xA9BF2FEA, 0xF94067EB, 0x2A1A03EA, 0xD37EF54A, 0xF86A696A, 0x92FFFFE9, 0x8A090148, 0xD2FFFFE9, 0x8A09014A, 0xD2FFFFC9, 0xEB09015F, 0x54000100, 0xA9BF27E8, 0xF9400388, 0xF9401D08, 0xAA1C03E0, 0xD63F0100, 0xA8C127E8, 0xAA0003E8, 0xA8C12FEA, 0xAA0803E0
+};
 
 static const KernelMeta kernelInfo[] = {
     {   //0 [1.0.0]
@@ -256,7 +264,7 @@ static const KernelMeta kernelInfo[] = {
         PRC_ID_RCV_800, sizeof(PRC_ID_RCV_800)
     },
     {
-        //9 [9.0.0]
+        //9 [9.0.0 - 9.1.0]
         {0x69, 0x00, 0x39, 0xDF, 0x21, 0x56, 0x70, 0x6B},
         0x50628,
         0x609E8,
@@ -268,6 +276,34 @@ static const KernelMeta kernelInfo[] = {
         0x65780,
         PRC_ID_SND_900, sizeof(PRC_ID_SND_900),
         PRC_ID_RCV_900, sizeof(PRC_ID_RCV_900)
+    },
+	    {
+        //9 [9.2.0]
+        {0xA2, 0xE3, 0xAD, 0x1C, 0x98, 0xD8, 0x7A, 0x62},
+        0x50628,
+        0x609E8,
+        0x329A0,
+        0x309B4,
+        0x43DFC,
+        0x10,
+        0x10,
+        0x65780,
+        PRC_ID_SND_900, sizeof(PRC_ID_SND_900),
+        PRC_ID_RCV_900, sizeof(PRC_ID_RCV_900)
+    },
+		{
+        //10 [10.0.0]
+        {0x21, 0xC1, 0xD7, 0x24, 0x8E, 0xCD, 0xBD, 0xA8},
+        0x523E4,
+        0x62B14,
+        0x34404,
+        0x322F8,
+        0x45DAC,
+        0x10,
+        0x10,
+        0x67790,
+        PRC_ID_SND_1000, sizeof(PRC_ID_SND_1000),
+        PRC_ID_RCV_1000, sizeof(PRC_ID_RCV_1000)
     }
 };
 
@@ -304,6 +340,10 @@ static kippatchset_t kip_patches[] = {
     { "FS", "\xb4\xca\xe1\xf2\x49\x65\xd9\x2e", fs_kip_patches_810_exfat },
     { "FS", "\x46\x87\x40\x76\x1e\x19\x3e\xb7", fs_kip_patches_900 },
     { "FS", "\x7c\x95\x13\x76\xe5\xc1\x2d\xf8", fs_kip_patches_900 },
+	{ "FS", "\xB5\xE7\xA6\x4C\x6F\x5C\x4F\xE3", fs_kip_patches_910 },       // FS 9.1.0
+	{ "FS", "\xF1\x96\xD1\x44\xD0\x44\x45\xB6", fs_kip_patches_910 },       // FS 9.1.0 exfat
+	{ "FS", "\x3E\xEB\xD9\xB7\xBC\xD1\xB5\xE0", fs_kip_patches_1000 },      // FS 10.0.0
+	{ "FS", "\x81\x7E\xA2\xB0\xB7\x02\xC1\xF3", fs_kip_patches_1000 },      // FS 10.0.0 exfat
     { NULL, NULL, NULL },
 };
 

@@ -293,6 +293,26 @@ static kipdiff_t fs_diffs_900_nogc[3] = {
   { 0, 0, NULL, NULL }
 };
 
+static kipdiff_t fs_diffs_910_nogc[3] = 
+{
+	{ 0x129430, 8, "\xF4\x4F\xBE\xA9\xFD\x7B\x01\xA9", "\xE0\x03\x1F\x2A\xC0\x03\x5F\xD6" },
+	{ 0x143278, 4, "\x14\x40\x80\x52", "\x14\x80\x80\x52" },
+	{ 0, 0, NULL, NULL }
+};
+
+static kipdiff_t fs_diffs_910_nosigchk[4] = {
+  { 0x61E64, 4, "\x1F\xD7\xFF\x97", "\xE0\x03\x1F\x2A" },
+  { 0x61E9C, 4, "\x4D\x31\x00\x94", "\xE0\x03\x1F\x2A" },
+  { 0xCA050, 4, "\x40\x04\x00\x36", "\x1F\x20\x03\xD5" },
+  { 0, 0, NULL, NULL }
+};
+
+static kipdiff_t fs_diffs_1000_nogc[3] = 
+{
+	{ 0x13BE90, 8, "\xF4\x4F\xBE\xA9\xFD\x7B\x01\xA9", "\xE0\x03\x1F\x2A\xC0\x03\x5F\xD6" },
+	{ 0x14DE08, 4, "\x14\x40\x80\x52", "\x14\x80\x80\x52" },
+	{ 0, 0, NULL, NULL }
+};
 
 /* patches */
 
@@ -422,5 +442,16 @@ static kippatch_t fs_kip_patches_810_exfat[] = {
 static kippatch_t fs_kip_patches_900[] = {
   { "nosighchk", fs_diffs_900_nosigchk },
   { "nogc", fs_diffs_900_nogc },
+  { NULL, NULL}
+};
+
+static kippatch_t fs_kip_patches_910[] = {
+  { "nosighchk", fs_diffs_910_nosigchk },
+  { "nogc", fs_diffs_910_nogc },
+  { NULL, NULL}
+};
+
+static kippatch_t fs_kip_patches_1000[] = {
+  { "nogc", fs_diffs_1000_nogc },
   { NULL, NULL}
 };
