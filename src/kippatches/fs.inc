@@ -314,6 +314,12 @@ static kipdiff_t fs_diffs_1000_nogc[3] =
 	{ 0, 0, NULL, NULL }
 };
 
+static kipdiff_t _fs_4chan_1000[] =
+{
+	{ 0xDC01C, 8, "\x75\x2E\xFE\x97\x40\x04\x00\x36", "\x20\x00\x80\xD2\x1F\x20\x03\xD5" },
+	{ 0, 0, NULL, NULL }
+};
+
 /* patches */
 
 static kippatch_t fs_kip_patches_100[] = {
@@ -453,5 +459,6 @@ static kippatch_t fs_kip_patches_910[] = {
 
 static kippatch_t fs_kip_patches_1000[] = {
   { "nogc", fs_diffs_1000_nogc },
+  { "nosigchk", _fs_4chan_1000 },
   { NULL, NULL}
 };

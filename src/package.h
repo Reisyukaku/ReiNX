@@ -23,7 +23,7 @@
 #define PKG2_SEC_BASE 0x80000000
 #define PKG2_SEC_KERNEL 0
 #define PKG2_SEC_INI1 1
-
+#define PKG2_NEWKERN_GET_INI1_HEURISTIC 0xD2800015 // Offset of OP + 12 is the INI1 offset.
 #define INI1_MAGIC 0x31494E49
 
 #define NOP_v8 0xD503201F

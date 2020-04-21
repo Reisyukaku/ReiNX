@@ -182,8 +182,28 @@ u32 pkg2_newkern_ini1_start = 0;
 u32 pkg2_newkern_ini1_end = 0;
 void pkg2_get_newkern_info(u8 *kern_data)
 {
-    u32 info_op = *(u32 *)(kern_data + 0x44);
-    pkg2_newkern_ini1_val = ((info_op & 0xFFFF) >> 3) + 0x44; // Parse ADR and PC.
+    u32 pkg2_newkern_ini1_off = 0;
+	pkg2_newkern_ini1_start = 0;
+
+	// Find static OP offset that is close to INI1 offset.
+	u32 counter_ops = 0x100;
+	while (counter_ops)
+	{
+		if (*(u32 *)(kern_data + 0x100 - counter_ops) == PKG2_NEWKERN_GET_INI1_HEURISTIC)
+		{
+			pkg2_newkern_ini1_off = 0x100 - counter_ops + 12; // OP found. Add 12 for the INI1 offset.
+			break;
+		}
+
+		counter_ops -= 4;
+	}
+
+	// Offset not found?
+	if (!counter_ops)
+		return;
+
+	u32 info_op = *(u32 *)(kern_data + pkg2_newkern_ini1_off);
+	pkg2_newkern_ini1_val = ((info_op & 0xFFFF) >> 3) + pkg2_newkern_ini1_off; // Parse ADR and PC.
 
     pkg2_newkern_ini1_start = *(u32 *)(kern_data + pkg2_newkern_ini1_val);
     pkg2_newkern_ini1_end   = *(u32 *)(kern_data + pkg2_newkern_ini1_val + 0x8);
