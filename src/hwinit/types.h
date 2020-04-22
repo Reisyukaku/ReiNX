@@ -198,6 +198,7 @@ typedef struct {
     u32 SndPayloadSize;
     u32 *RcvPayload;
     u32 RcvPayloadSize;
+    u32 SYSM_INCR;
 } KernelMeta;
 
 #define UWU0_MAGIC (u32)0x30557755

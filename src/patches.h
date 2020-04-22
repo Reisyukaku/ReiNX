@@ -222,7 +222,8 @@ static const KernelMeta kernelInfo[] = {
         8,
         0x5C020,
         PRC_ID_SND_500, sizeof(PRC_ID_SND_500),
-        PRC_ID_RCV_500, sizeof(PRC_ID_RCV_500)
+        PRC_ID_RCV_500, sizeof(PRC_ID_RCV_500),
+        0x54E30
     },
     {   //6 [6.0.0]
         {0x85, 0x97, 0x40, 0xF6, 0xC0, 0x3E, 0x3D, 0x44},
@@ -235,7 +236,8 @@ static const KernelMeta kernelInfo[] = {
         0x10,
         0x5EE00,
         PRC_ID_SND_600, sizeof(PRC_ID_SND_600),
-        PRC_ID_RCV_600, sizeof(PRC_ID_RCV_600)
+        PRC_ID_RCV_600, sizeof(PRC_ID_RCV_600),
+        0x57330
     },
     {   //7 [7.0.0]
         {0xA2, 0x5E, 0x47, 0x0C, 0x8E, 0x6D, 0x2F, 0xD7},
@@ -248,7 +250,8 @@ static const KernelMeta kernelInfo[] = {
         0x10,
         0x5FEC0,
         PRC_ID_SND_700, sizeof(PRC_ID_SND_700),
-        PRC_ID_RCV_700, sizeof(PRC_ID_RCV_700)
+        PRC_ID_RCV_700, sizeof(PRC_ID_RCV_700),
+        0x5F9A4
     },
     {   //8 [8.0.0]
         {0xF1, 0x5E, 0xC8, 0x34, 0xFD, 0x68, 0xF0, 0xF0},
@@ -261,7 +264,8 @@ static const KernelMeta kernelInfo[] = {
         0x10,
         0x607F0,
         PRC_ID_SND_800, sizeof(PRC_ID_SND_800),
-        PRC_ID_RCV_800, sizeof(PRC_ID_RCV_800)
+        PRC_ID_RCV_800, sizeof(PRC_ID_RCV_800),
+        0x5F9A4
     },
     {
         //9 [9.0.0 - 9.1.0]
@@ -275,7 +279,8 @@ static const KernelMeta kernelInfo[] = {
         0x10,
         0x65780,
         PRC_ID_SND_900, sizeof(PRC_ID_SND_900),
-        PRC_ID_RCV_900, sizeof(PRC_ID_RCV_900)
+        PRC_ID_RCV_900, sizeof(PRC_ID_RCV_900),
+        0x6493C
     },
 	    {
         //9 [9.2.0]
@@ -289,7 +294,8 @@ static const KernelMeta kernelInfo[] = {
         0x10,
         0x65780,
         PRC_ID_SND_900, sizeof(PRC_ID_SND_900),
-        PRC_ID_RCV_900, sizeof(PRC_ID_RCV_900)
+        PRC_ID_RCV_900, sizeof(PRC_ID_RCV_900),
+        0x6493C
     },
 		{
         //10 [10.0.0]
@@ -303,7 +309,8 @@ static const KernelMeta kernelInfo[] = {
         0x10,
         0x67790,
         PRC_ID_SND_1000, sizeof(PRC_ID_SND_1000),
-        PRC_ID_RCV_1000, sizeof(PRC_ID_RCV_1000)
+        PRC_ID_RCV_1000, sizeof(PRC_ID_RCV_1000),
+        0x66950
     }
 };
 
