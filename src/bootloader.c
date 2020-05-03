@@ -85,8 +85,7 @@ int keygen(u8 *keyblob, u32 fwVer, void * pkg1, pk11_offs * offs) {
     }
 
     if (fwVer >= KB_FIRMWARE_VERSION_700){
-		se_aes_unwrap_key(8, 12, pk21_keyseed);
-        print("hey he pasado\n");}
+		se_aes_unwrap_key(8, 12, pk21_keyseed);}
     else if(fwVer == KB_FIRMWARE_VERSION_620) {
         // Set TSEC key.
         se_aes_key_set(12, tmp, 0x10);
