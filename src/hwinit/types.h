@@ -60,7 +60,7 @@ enum KB_FIRMWARE_VERSION {
     KB_FIRMWARE_VERSION_700 = 7,
     KB_FIRMWARE_VERSION_701 = 7,
     KB_FIRMWARE_VERSION_800 = 7,
-    KB_FIRWAMRE_VERSION_810 = 8,
+    KB_FIRMWARE_VERSION_810 = 8,
     KB_FIRMWARE_VERSION_900 = 9,
     KB_FIRMWARE_VERSION_910 = 10,
 	KB_FIRMWARE_VERSION_1000 = 11,
@@ -198,6 +198,7 @@ typedef struct {
     u32 SndPayloadSize;
     u32 *RcvPayload;
     u32 RcvPayloadSize;
+    u32 SYSM_INCR;
 } KernelMeta;
 
 #define UWU0_MAGIC (u32)0x30557755

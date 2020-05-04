@@ -64,13 +64,74 @@ u8 *ReadPackage2(sdmmc_storage_t *storage, size_t *out_size) {
     return pkg2;
 }
 
-pkg2_hdr_t *unpackFirmwarePackage(u8 *data) {
+static bool _pkg2_key_unwrap_validate(pkg2_hdr_t *tmp_test, pkg2_hdr_t *hdr, u8 src_slot, u8 *mkey, const u8 *key_seed)
+{
+	
+	// Decrypt older encrypted mkey.
+	se_aes_crypt_ecb(src_slot, 0, mkey, 0x10, key_seed, 0x10);
+	// Set and unwrap pkg2 key.
+	se_aes_key_clear(9);
+	se_aes_key_set(9, mkey, 0x10);
+	se_aes_unwrap_key(9, 9, pk21_keyseed);
+
+	// Decrypt header.
+	se_aes_crypt_ctr(9, tmp_test, sizeof(pkg2_hdr_t), hdr, sizeof(pkg2_hdr_t), hdr);
+
+	// Return if header is valid.
+	return (tmp_test->magic == PKG2_MAGIC);
+}
+
+
+pkg2_hdr_t *unpackFirmwarePackage(u8 *data, u8 fwVer) {
     print("Unpacking firmware...\n");
+    u8 keyslot = 8;
+    pkg2_hdr_t mkey_test;
     pkg2_hdr_t *hdr = (pkg2_hdr_t *)(data + 0x100);
-
     //Decrypt header.
-    se_aes_crypt_ctr(8, hdr, sizeof(pkg2_hdr_t), hdr, sizeof(pkg2_hdr_t), hdr);
+    se_aes_crypt_ctr(8, &mkey_test, sizeof(pkg2_hdr_t), hdr, sizeof(pkg2_hdr_t), hdr);
+    if (mkey_test.magic == PKG2_MAGIC)
+		goto key_found;
+    
+    if (hdr->magic != PKG2_MAGIC){
+        if ((fwVer >= KB_FIRMWARE_VERSION_810) && ( fwVer < KB_FIRMWARE_VERSION_1000)){
+            u8 tmp_mkey[0x10];
+            u8 decr_slot = 12; // Sept mkey.
+            u8 mkey_seeds_cnt = sizeof(mkey_keyseed_8xx) / 0x10;
+            u8 mkey_seeds_idx = mkey_seeds_cnt; // Real index + 1.
+            u8 mkey_seeds_min_idx = mkey_seeds_cnt - (KB_FIRMWARE_VERSION_1000 - fwVer);
+            while (mkey_seeds_cnt){
+                // Decrypt and validate mkey.
+                int res = _pkg2_key_unwrap_validate(&mkey_test, hdr, decr_slot, tmp_mkey, mkey_keyseed_8xx[mkey_seeds_idx - 1]);
+                if (res){
+                    keyslot = 9;
+                    goto key_found;
+                } else {
+                    // Set current mkey in order to decrypt a lower mkey.
+                    mkey_seeds_idx--;
+                    se_aes_key_clear(9);
+                    se_aes_key_set(9, tmp_mkey, 0x10);  
+                    decr_slot = 9; // Temp key.
 
+                    // Check if we tried last key for that pkg2 version.
+                    // And start with a lower mkey in case sept is older.
+                    if (mkey_seeds_idx == mkey_seeds_min_idx)
+                    {
+                        mkey_seeds_cnt--;
+                        mkey_seeds_idx = mkey_seeds_cnt;
+                        decr_slot = 12; // Sept mkey.
+                    }
+
+                    // Out of keys. pkg2 is latest or process failed.
+                    if (!mkey_seeds_cnt)
+                        se_aes_key_clear(9);
+                }
+            }
+
+        }
+    }
+    key_found:
+    se_aes_crypt_ctr(keyslot, hdr, sizeof(pkg2_hdr_t), hdr, sizeof(pkg2_hdr_t), hdr);
+    print("Package2 Magic: 0x%08X and real Package2 Magic: 0x%08X \n", hdr->magic, PKG2_MAGIC);
     if (hdr->magic != PKG2_MAGIC) {
         error("Package2 Magic invalid!\nThere is a good chance your ReiNX build is outdated\nPlease get the newest build from our guide (reinx.guide) or our discord (discord.reiswitched.team)\nMake sure you replace the ReiNX.bin file on your SD card root too\n");
         return NULL;
@@ -82,7 +143,7 @@ pkg2_hdr_t *unpackFirmwarePackage(u8 *data) {
     for (u32 i = 0; i < 4; i++) {
         if (!hdr->sec_size[i]) continue;
 
-        se_aes_crypt_ctr(8, data, hdr->sec_size[i], data, hdr->sec_size[i], &hdr->sec_ctr[i * 0x10]);
+        se_aes_crypt_ctr(keyslot, data, hdr->sec_size[i], data, hdr->sec_size[i], &hdr->sec_ctr[i * 0x10]);
 
         data += hdr->sec_size[i];
     }
@@ -182,8 +243,28 @@ u32 pkg2_newkern_ini1_start = 0;
 u32 pkg2_newkern_ini1_end = 0;
 void pkg2_get_newkern_info(u8 *kern_data)
 {
-    u32 info_op = *(u32 *)(kern_data + 0x44);
-    pkg2_newkern_ini1_val = ((info_op & 0xFFFF) >> 3) + 0x44; // Parse ADR and PC.
+    u32 pkg2_newkern_ini1_off = 0;
+	pkg2_newkern_ini1_start = 0;
+
+	// Find static OP offset that is close to INI1 offset.
+	u32 counter_ops = 0x100;
+	while (counter_ops)
+	{
+		if (*(u32 *)(kern_data + 0x100 - counter_ops) == PKG2_NEWKERN_GET_INI1_HEURISTIC)
+		{
+			pkg2_newkern_ini1_off = 0x100 - counter_ops + 12; // OP found. Add 12 for the INI1 offset.
+			break;
+		}
+
+		counter_ops -= 4;
+	}
+
+	// Offset not found?
+	if (!counter_ops)
+		return;
+
+	u32 info_op = *(u32 *)(kern_data + pkg2_newkern_ini1_off);
+	pkg2_newkern_ini1_val = ((info_op & 0xFFFF) >> 3) + pkg2_newkern_ini1_off; // Parse ADR and PC.
 
     pkg2_newkern_ini1_start = *(u32 *)(kern_data + pkg2_newkern_ini1_val);
     pkg2_newkern_ini1_end   = *(u32 *)(kern_data + pkg2_newkern_ini1_val + 0x8);
@@ -264,15 +345,24 @@ size_t calcKipSize(pkg2_kip1_t *kip1) {
 
 void pkg2_parse_kips(link_t *info, pkg2_hdr_t *pkg2) {
     print("%kParsing KIPS%k\n", WHITE, DEFAULT_TEXT_COL);
-    u8 *ptr = pkg2->data + pkg2->sec_size[PKG2_SEC_KERNEL];
-    if (!pkg2->sec_size[PKG2_SEC_INI1]) {
-        pkg2_get_newkern_info(pkg2->data);
+    u8 *ptr;
+	// Check for new pkg2 type.
+	if (!pkg2->sec_size[PKG2_SEC_INI1])
+	{
+		pkg2_get_newkern_info(pkg2->data);
 
-        ptr = pkg2->data + pkg2_newkern_ini1_start;
-    }
+		/*if (!pkg2_newkern_ini1_start)
+			return false;*/
+
+		ptr = pkg2->data + pkg2_newkern_ini1_start;
+	}
+	else
+		ptr = pkg2->data + pkg2->sec_size[PKG2_SEC_KERNEL];
+
     pkg2_ini1_t *ini1 = (pkg2_ini1_t *)ptr;
     ptr += sizeof(pkg2_ini1_t);
-    if(ini1->magic != 0x31494E49) {
+    print("\nINI1MAGIC 0x%08X AND REAL: 0x31494E49\n", ini1->magic);
+    if(ini1->magic != INI1_MAGIC) {
         error("Invalid INI1 magic!\n");
         return;
     }

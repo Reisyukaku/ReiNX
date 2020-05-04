@@ -98,7 +98,7 @@ u8 loadFirm() {
 
     // Unpack Package2.
     print("Unpacking package2...\n");
-    pkg2_hdr_t *dec_pkg2 = unpackFirmwarePackage(pkg2);
+    pkg2_hdr_t *dec_pkg2 = unpackFirmwarePackage(pkg2, pk11Offs->kb);
 
     LIST_INIT(kip1_info);
     pkg2_parse_kips(&kip1_info, dec_pkg2);

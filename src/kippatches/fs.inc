@@ -307,10 +307,16 @@ static kipdiff_t fs_diffs_910_nosigchk[4] = {
   { 0, 0, NULL, NULL }
 };
 
-static kipdiff_t fs_diffs_1000_nogc[3] = 
+static kipdiff_t fs_nogc_1000[] = 
 {
 	{ 0x13BE90, 8, "\xF4\x4F\xBE\xA9\xFD\x7B\x01\xA9", "\xE0\x03\x1F\x2A\xC0\x03\x5F\xD6" },
 	{ 0x14DE08, 4, "\x14\x40\x80\x52", "\x14\x80\x80\x52" },
+	{ 0, 0, NULL, NULL }
+};
+
+static kipdiff_t fs_sigpatch_1000[] =
+{
+	{ 0xDC01C, 8, "\x75\x2E\xFE\x97\x40\x04\x00\x36", "\x20\x00\x80\xD2\x1F\x20\x03\xD5" },
 	{ 0, 0, NULL, NULL }
 };
 
@@ -452,6 +458,7 @@ static kippatch_t fs_kip_patches_910[] = {
 };
 
 static kippatch_t fs_kip_patches_1000[] = {
-  { "nogc", fs_diffs_1000_nogc },
+  { "nogc", fs_nogc_1000 },
+  { "nosigchk", fs_sigpatch_1000 },
   { NULL, NULL}
 };

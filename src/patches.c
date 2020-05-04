@@ -92,6 +92,7 @@ void patchKernel(pkg2_hdr_t *pkg2){
             print("Kernel ipc send payload off: 0x%08X\n", kernelInfo[i].CodeSndOff);
             print("Kernel ipc recv payload off: 0x%08X\n", kernelInfo[i].CodeRcvOff);
             print("Kernel Freespace: 0x%08X\n", kernelInfo[i].Freespace);
+            print("Kernel SYSM_INCR: 0x%08X\n", kernelInfo[i].SYSM_INCR);
             
             //Find free space
             u32 freeSpace = kernelInfo[i].Freespace;//getFreeSpace((void*)(kern+0x45000), 0x200, 0x20000) + 0x45000; 
@@ -117,6 +118,9 @@ void patchKernel(pkg2_hdr_t *pkg2){
                 fclose();
                 *(vu32*)(kern + kernelInfo[i].SvcDebug) = _MOVZX(8, 1, 0);
             }
+
+            //SYSM_INCR patches
+            *(vu32*)(kern + kernelInfo[i].SYSM_INCR) = _MOVZW(19, 0x1D80, LSL16);
 
             //JIT patches
             *(vu32*)(kern + kernelInfo[i].GenericOff) = NOP_v8;

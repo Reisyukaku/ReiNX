@@ -18,12 +18,13 @@
 #include "hwinit.h"
 #include "error.h"
 #include "fs.h"
+#include "bootloader.h"
 
 #define PKG2_MAGIC 0x31324B50
 #define PKG2_SEC_BASE 0x80000000
 #define PKG2_SEC_KERNEL 0
 #define PKG2_SEC_INI1 1
-
+#define PKG2_NEWKERN_GET_INI1_HEURISTIC 0xD2800015 // Offset of OP + 12 is the INI1 offset.
 #define INI1_MAGIC 0x31494E49
 
 #define NOP_v8 0xD503201F
@@ -36,7 +37,7 @@ u8 *ReadPackage2(sdmmc_storage_t *storage, size_t *out_size);
 int kippatch_apply(u8 *kipdata, u64 kipdata_len, kippatch_t *patch);
 int kippatch_apply_set(u8 *kipdata, u64 kipdata_len, kippatchset_t *patchset);
 kippatchset_t *kippatch_find_set(u8 *kiphash, kippatchset_t *patchsets);
-pkg2_hdr_t *unpackFirmwarePackage(u8 *data);
+pkg2_hdr_t *unpackFirmwarePackage(u8 *data, u8 fwVer);
 void pkg1_unpack(pk11_offs *offs, u32 pkg1Off);
 void buildFirmwarePackage(u8 *kernel, u32 kernel_size, link_t *kips_info, pk11_offs *pk11Offs);
 size_t calcKipSize(pkg2_kip1_t *kip1);
