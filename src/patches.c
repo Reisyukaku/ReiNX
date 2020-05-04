@@ -64,7 +64,7 @@ void patchFS(pkg2_kip1_info_t* ki) {
     ki->kip1 = moddedKip;
 }
 
-void patchKernel(pkg2_hdr_t *pkg2){
+void patchKernel(pkg2_hdr_t *pkg2, u8 fwVer){
     //Patch Kernel
     if(!hasCustomKern()) {
         print("%kPatching Kernel...%k\n", WHITE, DEFAULT_TEXT_COL);
@@ -120,7 +120,23 @@ void patchKernel(pkg2_hdr_t *pkg2){
             }
 
             //SYSM_INCR patches
-            *(vu32*)(kern + kernelInfo[i].SYSM_INCR) = _MOVZW(19, 0x1D80, LSL16);
+            switch(fwVer){
+                case HOS_FIRMWARE_VERSION_500:
+                    *(vu32*)(kern + kernelInfo[i].SYSM_INCR) = _MOVZW(8, 0x1E00, LSL16);
+                    break;
+                case HOS_FIRMWARE_VERSION_600:
+                case HOS_FIRMWARE_VERSION_620:
+                case HOS_FIRMWARE_VERSION_700:
+                    *(vu32*)(kern + kernelInfo[i].SYSM_INCR) = _MOVZW(8, 0x1D80, LSL16);
+                    break;
+                case HOS_FIRMWARE_VERSION_800:
+                case HOS_FIRMWARE_VERSION_810:
+                case HOS_FIRMWARE_VERSION_900:
+                case HOS_FIRMWARE_VERSION_910:
+                case HOS_FIRMWARE_VERSION_1000:
+                    *(vu32*)(kern + kernelInfo[i].SYSM_INCR) = _MOVZW(19, 0x1D80, LSL16);
+                    break;
+            }
 
             //JIT patches
             *(vu32*)(kern + kernelInfo[i].GenericOff) = NOP_v8;

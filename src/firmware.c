@@ -104,7 +104,7 @@ u8 loadFirm() {
     pkg2_parse_kips(&kip1_info, dec_pkg2);
 
     // Patch firmware.
-    patchKernel(dec_pkg2);
+    patchKernel(dec_pkg2, pk11Offs->hos);
     patchKernelExtensions(&kip1_info);
 
     // Build Package2.
