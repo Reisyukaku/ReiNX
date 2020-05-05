@@ -62,6 +62,14 @@ u32 fread(void *buf, size_t size, size_t ntimes) {
     return 1;
 }
 
+u32 fseek(size_t off) {
+    if(f_lseek(&fp, off) != FR_OK) {
+        error("Failed read!\n");
+        return 0;
+    }
+    return 1;
+}
+
 u32 fwrite(void *buf, size_t size, size_t ntimes) {
     u8 *ptr = buf;
     while (size > 0) {

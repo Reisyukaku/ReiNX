@@ -163,7 +163,7 @@ void gfx_putc(gfx_con_t *con, char c);
 void gfx_puts(gfx_con_t *con, const char *s);
 void gfx_printf(gfx_con_t *con, const char *fmt, ...);
 void gfx_hexdump(gfx_con_t *con, const u8 *buf, u32 len);
-
+void gfx_load_splash(const u32 *buf);
 void gfx_set_pixel(gfx_ctxt_t *ctxt, u32 x, u32 y, u32 color);
 
 #endif

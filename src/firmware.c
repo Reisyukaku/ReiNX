@@ -29,9 +29,15 @@ const volatile metadata_t __attribute__((section (".metadata"))) metadata_sectio
 
 int drawSplash() {
     // Draw splashscreen to framebuffer.
-    if(fopen("/ReiNX/splash.bin", "rb") != 0) {
-        fread((void*)gfx_ctxt.fb, fsize(), 1);
+    if(fopen("/ReiNX/splash.bmp", "rb") != 0) {
+        size_t bmpHeaderSize = 0x8A;
+        size_t filsize = fsize();
+        u32 *buf = malloc(filsize/sizeof(u32));
+        fseek(bmpHeaderSize);
+        fread((void*)buf, filsize-bmpHeaderSize, 1);
         fclose();
+        gfx_load_splash(buf);
+        free(buf);
         return 1;
     }
     return 0;
@@ -85,6 +91,9 @@ u8 loadFirm() {
         else
             se_aes_unwrap_key(8, 12, pk21_keyseed);
     }
+    
+    //Draw splash only after sept
+    drawSplash();
 
     print("Unpacking pkg1\n");
     pkg1_unpack(pk11Offs, (u32)pkg11);
@@ -264,11 +273,9 @@ void firmware() {
     }
 
     //Determine if booting in verbose mode
-    if (btn_read() & BTN_VOL_DOWN) {
-        print("%kWelcome to ReiNX %d.%d!\n%k", WHITE, VERSION_MAJOR, VERSION_MINOR, DEFAULT_TEXT_COL);
-    } else if (drawSplash()) {
-        gfx_con.mute = 1;
-    }
+    gfx_con.mute = !(btn_read() & BTN_VOL_DOWN);
+        
+    print("%kWelcome to ReiNX %d.%d!\n%k", WHITE, VERSION_MAJOR, VERSION_MINOR, DEFAULT_TEXT_COL);
     
     //Make sure we have the needed files
     if (!hasCustomWb() && !hasCustomSecmon()) {

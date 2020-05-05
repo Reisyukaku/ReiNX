@@ -41,7 +41,7 @@ void gfx_con_init(gfx_con_t *con, gfx_ctxt_t *ctxt)
 	con->fgcol = 0xFFCCCCCC;
 	con->fillbg = 0;
 	con->bgcol = 0;
-	con->mute = 0;
+	con->mute = 1;
 }
 
 /*
@@ -254,4 +254,15 @@ void gfx_hexdump(gfx_con_t *con, const u8 *buf, u32 len)
 		}
 	}
 	gfx_putc(con, '\n');
+}
+
+void gfx_load_splash(const u32 *buf)
+{
+    u32 width = 1280, height = 720;
+    u32 x,y;
+    u32 i = 0;
+    for (x = 0; x < width; x++)
+        for (y = 0; y < height; y++){
+			gfx_ctxt.fb[y + x * gfx_ctxt.stride] = (u32*)buf[(((height-1) - y ) * width + x)];
+        }
 }
