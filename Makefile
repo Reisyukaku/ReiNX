@@ -86,7 +86,7 @@ $(dir_out)/$(name).bin: $(dir_build)/$(name).elf
 	@$(MAKE) -C $(dir_septchainloader)
 	@cp $(dir_septchainloader)/out/payload.bin $(dir_out)/sept
 	@cp -R $(dir_data)/*.bmp $(dir_out)/ReiNX/
-	@cp -R $(dir_data)/*.rxp $(dir_out)/ReiNX/patches/RXP
+	@cp -R $(dir_data)/*.rxp $(dir_out)/ReiNX/patches/RXP/
 	$(OBJCOPY) -S -O binary $< $@
 
 $(dir_build)/$(name).elf: $(objects)
