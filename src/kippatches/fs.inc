@@ -446,13 +446,13 @@ static kippatch_t fs_kip_patches_810_exfat[] = {
 };
 
 static kippatch_t fs_kip_patches_900[] = {
-  { "nosighchk", fs_diffs_900_nosigchk },
+  { "nosigchk", fs_diffs_900_nosigchk },
   { "nogc", fs_diffs_900_nogc },
   { NULL, NULL}
 };
 
 static kippatch_t fs_kip_patches_910[] = {
-  { "nosighchk", fs_diffs_910_nosigchk },
+  { "nosigchk", fs_diffs_910_nosigchk },
   { "nogc", fs_diffs_910_nogc },
   { NULL, NULL}
 };

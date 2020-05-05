@@ -81,12 +81,12 @@ $(dir_out)/sysmodules: $(dir_sysmod)
 
 $(dir_out)/$(name).bin: $(dir_build)/$(name).elf
 	@mkdir -p "$(@D)"
-	@mkdir -p "$(dir_out)/ReiNX/patches"
+	@mkdir -p "$(dir_out)/ReiNX/patches/RXP"
 	@mkdir -p "$(dir_out)/sept"
 	@$(MAKE) -C $(dir_septchainloader)
 	@cp $(dir_septchainloader)/out/payload.bin $(dir_out)/sept
 	@cp -R $(dir_data)/*.bmp $(dir_out)/ReiNX/
-	@cp -R $(dir_data)/*.rxp $(dir_out)/ReiNX/patches
+	@cp -R $(dir_data)/*.rxp $(dir_out)/ReiNX/patches/RXP
 	$(OBJCOPY) -S -O binary $< $@
 
 $(dir_build)/$(name).elf: $(objects)
