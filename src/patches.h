@@ -251,7 +251,7 @@ static const KernelMeta kernelInfo[] = {
         0x5FEC0,
         PRC_ID_SND_700, sizeof(PRC_ID_SND_700),
         PRC_ID_RCV_700, sizeof(PRC_ID_RCV_700),
-        0x5F9A4
+        0x57F98
     },
     {   //8 [8.0.0]
         {0xF1, 0x5E, 0xC8, 0x34, 0xFD, 0x68, 0xF0, 0xF0},
@@ -355,6 +355,6 @@ static kippatchset_t kip_patches[] = {
 };
 
 void patchFS(pkg2_kip1_info_t* ki);
-void patchKernel(pkg2_hdr_t *pkg2);
+void patchKernel(pkg2_hdr_t *pkg2, u8 fwVer);
 void patchKernelExtensions(link_t *kips);
 pkg2_kip1_info_t* find_by_tid(link_t* kip_list, u64 tid);
