@@ -127,6 +127,13 @@ static const u8 _gfx_font[] = {
 	0x00, 0x00, 0x00, 0x4C, 0x32, 0x00, 0x00, 0x00  // Char 126 (~)
 };
 
+typedef struct {
+    u16 magic;
+    u32 fileSize;
+    u32 padding;
+    u32 offset;
+} BitmapHeader;
+
 typedef struct _gfx_ctxt_t
 {
 	u32 *fb;

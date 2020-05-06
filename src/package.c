@@ -411,24 +411,6 @@ int kippatch_apply(u8 *kipdata, u64 kipdata_len, kippatch_t *patch) {
     return 0;
 }
 
-int nca_patch(u8 * kipdata, u64 kipdata_len) {
-    char pattern[8] = {0xE5, 0x07, 0x00, 0x32, 0xE0, 0x03, 0x16, 0xAA};
-    char buf[0x10];
-    memcpy(buf, kipdata+0x1C450, 0x10);
-    u32 * addr = (u32*)memsearch(kipdata, kipdata_len, pattern, sizeof(pattern));
-    int ret=0;
-    int max_dist = 0x10;
-    for(int i=0; i<max_dist; i++) {
-        u32 op = addr[i];
-        if((op & 0xFC000000) == 0x94000000) { //is a BL op
-            addr[i] = NOP_v8;
-            ret=1;
-            break;
-        }
-    }
-    return ret;
-}
-
 int kippatch_apply_set(u8 *kipdata, u64 kipdata_len, kippatchset_t *patchset) {
     char *patchFilter[] = { "nosigchk", "nocmac", "nogc", NULL };
 

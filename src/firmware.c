@@ -27,9 +27,9 @@ const volatile metadata_t __attribute__((section (".metadata"))) metadata_sectio
     .minor = VERSION_MINOR
 };
 
-int drawSplash() {
+void drawSplash() {    
     // Draw splashscreen to framebuffer.
-    if(fopen("/ReiNX/splash.bmp", "rb") != 0) {
+    if(gfx_con.mute && fopen("/ReiNX/splash.bmp", "rb") != 0) {
         size_t bmpHeaderSize = 0x8A;
         size_t filsize = fsize();
         u32 *buf = malloc(filsize/sizeof(u32));
@@ -38,9 +38,8 @@ int drawSplash() {
         fclose();
         gfx_load_splash(buf);
         free(buf);
-        return 1;
     }
-    return 0;
+    return;
 }
 
 u8 loadFirm() {
@@ -227,7 +226,7 @@ void firmware() {
     gfx_con_setcol(&gfx_con, DEFAULT_TEXT_COL, 0, 0);
     display_backlight_pwm_init();
     display_backlight_brightness(100, 5000);
-
+    
     //Mount SD
     if (!sdMount())
         error("Failed to init SD card!\nPress POWER to power off, or any other key to continue without SD.\n");
